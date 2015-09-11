@@ -1,0 +1,66 @@
+# sar.world - config for stage
+# Author: Yang Xiao
+# Date: 8 September 2015
+
+include "map.inc"
+include "../robots/colias.inc"
+include "../robots/survivor.inc"
+
+# time to quit the simulation
+quit_time 600 # 10 minutes
+paused 1
+
+# the length of real/simulated milliseconds between updates of the simulation window
+# interval_real 100 # default
+interval_sim 100
+resolution 0.005
+
+#config the GUI window
+window
+(
+  size [ 635.000 666.000 ] #in pixels
+
+  # camera options
+  center [ -0.040 -0.274 ]
+  rotate [ 0 0 ]
+  scale 75.90  #pixels per meter
+
+  # perspective camera options
+  pcam_loc [ 0 -4 2 ]
+  pcam_angle [ 70 0 ] 
+  pcam_on 0
+
+  # GUI options
+  show_data 1
+  show_grid 1
+  show_flags 1
+  show_blocks 1
+  show_clock 1
+  show_footprints 0
+  show_trailrise 0
+  show_trailfast 0
+  show_occupancy 0
+  screenshots 0
+)
+
+# load an simple environment bitmap
+simpleMap
+(
+  name "cave"
+  size [ 8.000 8.000 0.100 ]
+  pose [ 0 0 0 0 ]
+)
+
+colias(
+  name "robot1"
+  pose [ -0.40 -0.83 0.0 0.0]
+
+)
+
+survivor
+(
+  name "survivor1"
+  pose [ -0.80 -2.4 0.0 30 ]
+  fiducial_key 1
+)
+
