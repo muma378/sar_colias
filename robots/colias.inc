@@ -9,7 +9,7 @@ define colias_ir sensor
   #color_rgba [ 0 1 0 0.6 ]
   color "cyan"
   # size of each transducer 4*15*8mm
-  size [ 0.010 0.015 0.008 ]
+  size [ 0.004 0.008 0.004 ]
   # Long-range system with 15 +(-)1cm  of max range, 60 degree of wide viewing angle
   range [ 0.000 0.150 ]
   # field of view is 60 degree
@@ -65,7 +65,7 @@ define colias_ir_blocks model
 define colias_bumper sensor
 (
   color "gray"
-  size [ 0.010 0.020 0.008 ] # NOT accurate
+  size [ 0.004 0.010 0.004 ] # NOT accurate
   range [ 0.000 0.030 ] # 3 +(-)0.5cm
   fov 15
 

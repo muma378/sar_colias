@@ -19,8 +19,7 @@ define obstacle model
 (
   color "cyan"
   size [ 0.3 0.3 0.3 ]
-  fiducial_return 1
-  fiducial_key 0
   obstacle_return 1
   gripper_return 0
+  ranger_return 2
 )

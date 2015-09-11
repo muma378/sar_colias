@@ -4,7 +4,7 @@
 
 include "map.inc"
 include "../robots/colias.inc"
-include "../robots/survivor.inc"
+include "../targets/survivor.inc"
 
 # time to quit the simulation
 quit_time 600 # 10 minutes
@@ -57,10 +57,15 @@ colias(
 
 )
 
-survivor
+colias(
+  name "robot2"
+  pose [ -0.45 -0.83 0.0 0.0]
+
+)
+
+obstacle
 (
   name "survivor1"
   pose [ -0.80 -2.4 0.0 30 ]
-  fiducial_key 1
 )
 

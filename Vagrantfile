@@ -14,8 +14,7 @@ Vagrant.configure(2) do |config|
   		xserver-xorg-video-dummy x11vnc \
   		fluxbox xterm \
   		supervisor \
-  		git-core \
-		libga-dev libconfig++
+  		git-core
 
 	# stop supervisord
   	service supervisor stop
