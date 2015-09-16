@@ -50,11 +50,11 @@ public:
 	// constructs the group with the robot and its neighbours
 	Group(Robot* robot);
 	~Group();
-	// bool updated_;
 	// construct the group locally
 	void ReConstruct(Robot* robot);
+	void Initialize(Robot* robot);
 	// sets the corresponding bit 1
-	void JoinGroup(int robot_id);
+	void JoinGroup(const int robot_id);
 	// calculates the center and fittest center
 	void Update(int* fitness_array);
 	void ResetPose3dT(player_pose3d_t p);

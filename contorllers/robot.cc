@@ -32,6 +32,7 @@ int Robot::get_fitness(){
 }
 
 void Robot::PrintInterfaces(){
+	cout << "id: " << id_ << "fitness: " << get_fitness() << endl;
 	cout << engine_ << infrared_ << robot_detector_ << endl;
 }
 
@@ -69,37 +70,36 @@ void Robot::GetSourceIntensity(){
 Group::Group(Robot* robot)
 	: fiducial_robot_(robot),
 	  fiducial_robot_id_(robot->id_){
-	ClearBitset();
-	ResetPose3dT(center_);
-	ResetPose3dT(fittest_center_);
-	
-	JoinGroup(robot->id_);
-	// includes itself
-	group_size_ = robot->GetNeighboursCount()+1;
-	// set the neighbours' corresponding bit 1
-	for (int i = 0; i < group_size_ ; ++i){
-		JoinGroup(robot->GetNeighbourId(i));
-	}
+	Initialize(robot);
 }
+
+Group::~Group(){}
 
 // does the same thing as the constructor but locally
 void Group::ReConstruct(Robot* robot){
 	fiducial_robot_ = robot;
 	fiducial_robot_id_ = robot->id_;
+	Initialize(robot);
+}
+
+void Group::Initialize(Robot* robot){
 	ClearBitset();
 	ResetPose3dT(center_);
 	ResetPose3dT(fittest_center_);
 
 	JoinGroup(robot->id_);
-	group_size_ = robot->GetNeighboursCount()+1;
+	// includes itself
+	int neighbour_size = robot->GetNeighboursCount();
 	// set the neighbours' corresponding bit 1
-	for (int i = 0; i < group_size_ ; ++i){
+	for (int i = 0; i < neighbour_size ; ++i){
 		JoinGroup(robot->GetNeighbourId(i));
 	}
+	group_size_ = neighbour_size + 1;	// includes itself
 }
 
-void Group::JoinGroup(int robot_id){
-	if (robot_id>0 && robot_id<=ROBOTS_COUNT){
+
+void Group::JoinGroup(const int robot_id){
+	if ((robot_id>0) && (robot_id<=ROBOTS_COUNT)){
 		members_bitset_[robot_id-1] = 1;
 	}else{
 		printf("Group::JoinGroup(%d) - index out of range\n", robot_id);

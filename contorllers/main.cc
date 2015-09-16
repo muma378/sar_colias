@@ -14,21 +14,28 @@ public:
 	Swarm(PlayerClient* client);
 	~Swarm();
 	void Test();
-
 	void Update();
-	void UpdateGroup();
+	// updates the groups whihc hava at least one common element
+	void UpdateConnectedGroup();
 	void UpdateCenter();
+	void AutoConstructGroup(Robot* robot);
 	bool MergeSameGroup(int group_index);
 	void ShrinkGroups();
-	void FlipRobotBit(int robot_index);
-	void FlipRobotBit(Group* group);
-	void ResetSwarmBitset();
+	void FlipRobotBit(int robot_index){ swarm_bitset_[robot_index] = 1; }
+	void FlipRobotBit(Group* group){ swarm_bitset_ |= group->get_members_bitset(); }
+	void ResetSwarmBitset(){ swarm_bitset_.reset(); }
+	bool HasRobotUngrouped(){ return !swarm_bitset_.all(); }
+	bool IsRobotInGroup(int robot_index){ return swarm_bitset_.test(robot_index); }
 	void SetRobotGroupIndex(int robot_id, int group_index);
+	int GetUngroupedRobot();
+	void PrintGroupsMembers();
+
 
 private:
 	vector<Robot*> robots_vector_;	// to record all robots
 	vector<Group*> groups_vector_;	// to record all groups
-	bitset<ROBOTS_COUNT> swarm_bitset_;
+	// 0 stands for idle, 1 represents being grouped
+	bitset<ROBOTS_COUNT> swarm_bitset_;	
 	unsigned group_actual_size_;
 
 };
@@ -41,6 +48,12 @@ Swarm::Swarm(PlayerClient* client) : group_actual_size_(0){
 
 Swarm::~Swarm(){}
 
+void Swarm::PrintGroupsMembers(){
+	for (int i = 0; i < groups_vector_.size(); ++i){
+		cout << "group-" << i << " : " << groups_vector_[i]->get_members_bitset().to_string() << endl;
+	}
+}
+
 void Swarm::Test(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		it != robots_vector_.end(); ++it){
@@ -48,15 +61,14 @@ void Swarm::Test(){
 		(*it)->PrintInterfaces();
 		//cout << (*it)->get_fitness() << endl;
 	}
-	while(true){
-		Update();
-  		usleep(100);
-  	}
 }
 
-void Swarm::Update(){
-	UpdateGroup();
-	UpdateCenter();
+int Swarm::GetUngroupedRobot(){
+	for (int i = 0; i < ROBOTS_COUNT; ++i){
+		if (!IsRobotInGroup(i))
+			return i;
+	}
+	return -1;
 }
 
 void Swarm::ShrinkGroups(){
@@ -64,27 +76,18 @@ void Swarm::ShrinkGroups(){
 	int redundant_stake_num = groups_vector_.size() - group_actual_size_;
 	if (redundant_stake_num){
 		for (int i = 0; i < redundant_stake_num; ++i){
+			delete groups_vector_.back();
 			groups_vector_.pop_back();
 		}
 	}
 }
 
-void Swarm::FlipRobotBit(int robot_index){
-	swarm_bitset_[robot_index] = 1;
-}
-
-void Swarm::FlipRobotBit(Group* group){
-	swarm_bitset_ |= group->get_members_bitset();
-}
-
-void Swarm::ResetSwarmBitset(){
-	swarm_bitset_.reset();	// all 0
-}
 
 void Swarm::SetRobotGroupIndex(int robot_id, int group_index){
 	robots_vector_[robot_id-1]->set_group_index(group_index);
 }
 
+// groups that have same members are merged, their fiducial robots point to the sole one
 bool Swarm::MergeSameGroup(int group_index){
 	int fiducial_id = groups_vector_[group_index]->get_fiducial_robot_id();
 	bitset<ROBOTS_COUNT> fiducial_bitset = groups_vector_[group_index]->get_members_bitset();
@@ -98,28 +101,54 @@ bool Swarm::MergeSameGroup(int group_index){
 	return false;
 }
 
-void Swarm::UpdateGroup(){
-	if (groups_vector_.empty()){
-		// initialize the group with the first robot
-		groups_vector_.push_back( new Group(robots_vector_[0]) );
-		group_actual_size_ = 1;
+// constructs groups in different ways according to the size of the group vector
+// if there is extra unused slot, reconstructs the group with new fiducial robot
+// if not, allocates a new slot for the group and appends it to the vector
+void Swarm::AutoConstructGroup(Robot* robot){
+	// if groups in the vector are all used
+	if (groups_vector_.size()==group_actual_size_){	
+		// appends a new stake
+		groups_vector_.push_back(new Group(robot));
+	}else{	// for the stakes not used
+		// reuses it
+		groups_vector_[group_actual_size_]->ReConstruct(robot);
+	}	
+}
+
+void Swarm::Update(){
+	// begin to update all robot's neighbours and group again
+	ResetSwarmBitset();
+	group_actual_size_ = 0;
+	// if there exists a robot not in any group
+	while(HasRobotUngrouped()){
+		AutoConstructGroup(robots_vector_[GetUngroupedRobot()]);
+		// as a robot unconnected to anyone in the previous groups
+		// it surely can't be merged and the group size shall increase 1
+		group_actual_size_++;
+		UpdateConnectedGroup();
 	}
-	ResetSwarmBitset();	// sets all bits 0
-	for (unsigned int i = 0; i < groups_vector_.size(); ++i){
+	ShrinkGroups();
+	// UpdateCenter();
+}
+
+void Swarm::UpdateConnectedGroup(){
+	int current_group_index = group_actual_size_ - 1;
+	for (unsigned int i = current_group_index; i < groups_vector_.size(); ++i){
 		Group* current_group = groups_vector_[i];
+		int fiducial_robot_index = current_group->get_fiducial_robot_id() - 1;
+		
+		if (IsRobotInGroup(fiducial_robot_index)){
+			// the group has already constructed
+			// cout << "robot " << current_group->get_fiducial_robot_id() << " already grouped." << endl; // TO CLEAN
+			continue;
+		}
 		for (int robot_index = current_group->NextMemberIndex(-1); robot_index != -1;
 			 robot_index = current_group->NextMemberIndex(robot_index)){
+			// cout << "robot index: " << robot_index << endl;		// TO CLEAN
 			// if the robot hasn't been put into a correct group
-			if (!swarm_bitset_.test(robot_index)){
-				// if groups in the vector are all used
-				if (groups_vector_.size()==group_actual_size_){	
-					// appends a new stake
-					groups_vector_.push_back(new Group(robots_vector_[robot_index]));
-				}else{	// for the stakes not used
-					// reuses it
-					groups_vector_[group_actual_size_]->ReConstruct(robots_vector_[robot_index]);
-				}
-				int current_group_index = group_actual_size_;
+			if (!IsRobotInGroup(robot_index)){
+				AutoConstructGroup(robots_vector_[robot_index]);
+				current_group_index = group_actual_size_;
 				// doesn't find the group has the exactly same subset
 				if (!MergeSameGroup(current_group_index)){
 					// then uses the current one
@@ -128,9 +157,9 @@ void Swarm::UpdateGroup(){
 				}
 			}
 		}
+		// cout << "Group " << i << " created." << endl; // TO CLEAN
 		FlipRobotBit(current_group);
 	}
-	ShrinkGroups();
 }
 
 void Swarm::UpdateCenter(){
@@ -143,12 +172,19 @@ void Swarm::UpdateCenter(){
 	}
 }
 
+
 int main(int argc, char const *argv[])
 {	
 	PlayerClient client("localhost", 6665);
 	Swarm swarm(&client);
-	client.Read();
+	
   	swarm.Test();
+  	while(true){
+  		client.Read();
+		swarm.Update();
+		swarm.PrintGroupsMembers();
+  		usleep(UPDATE_INTERVAL);
+  	}
 
 	return 0;
 }
