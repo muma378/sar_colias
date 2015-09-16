@@ -6,10 +6,9 @@
 # modelling the single colias IR sensor
 define colias_ir sensor
 (
-  #color_rgba [ 0 1 0 0.6 ]
   color "cyan"
   # size of each transducer 4*15*8mm
-  size [ 0.004 0.008 0.004 ]
+  size [ 0.00 0.00 0.00 ]
   # Long-range system with 15 +(-)1cm  of max range, 60 degree of wide viewing angle
   range [ 0.000 0.150 ]
   # field of view is 60 degree
@@ -33,18 +32,30 @@ define colias_ir_block model
 )
 
 
+# define colias_irs ranger
+# (
+  
+#   # uniformly distributed around the circle
+#   colias_ir( pose [ 0.0 0.0 -0.0035 60] )
+#   colias_ir( pose [ 0.0 0.0 -0.0035 0] )
+#   colias_ir( pose [ 0.0 -0.0 -0.0035 -60] )
+#   colias_ir( pose [-0.0 -0.0 -0.0035 -120] )
+#   colias_ir( pose [-0.0 0.0000 -0.0035 180] )
+#   colias_ir( pose [-0.0 0.0 -0.0035 120] )
+# )
+
 # long-range system is composed of 6 IR proximity sensors (each 60 degree on
 # on the upper board) for obstacle and robot detection. 
 define colias_irs ranger
 (
   
   # uniformly distributed around the circle
-  colias_ir( pose [ 0.0125 0.0220 0.0 60] )
-  colias_ir( pose [ 0.0250 0.0000 0.0 0] )
-  colias_ir( pose [ 0.0125 -0.0220 0.0 -60] )
-  colias_ir( pose [-0.0125 -0.0220 0.0 -120] )
-  colias_ir( pose [-0.0250 0.0000 0.0 180] )
-  colias_ir( pose [-0.0125 0.0220 0.0 120] )
+  colias_ir( pose [ 0.0125 0.0220 -0.004 60] )
+  colias_ir( pose [ 0.0250 0.0000 -0.004 0] )
+  colias_ir( pose [ 0.0125 -0.0220 -0.004 -60] )
+  colias_ir( pose [-0.0125 -0.0220 -0.004 -120] )
+  colias_ir( pose [-0.0250 0.0000 -0.004 180] )
+  colias_ir( pose [-0.0125 0.0220 -0.004 120] )
 )
 
 # approximates the shape of all ir sensers
@@ -119,7 +130,7 @@ define colias_upper_board model
   	point[9] [ 0.0000 -0.0250 ]
   	point[10] [ 0.0125 -0.0220 ]
   	point[11] [ 0.0220 -0.0125 ]
-  	z [ 0.0300 0.0350 ]
+  	z [ 0.000 0.0050 ]
   )
 
   colias_irs()
@@ -146,7 +157,7 @@ define colias_bottom_board model
    point[7] [ -0.0250 0.0000 ]
    point[8] [ -0.0220 0.0125 ]
    point[9] [ -0.0150 0.0200 ]
-   z [ 0.008 0.013 ]
+   z [ 0.002 0.005 ]
   )
 
   colias_wheel(
@@ -159,11 +170,29 @@ define colias_bottom_board model
 
 )
 
+
+define colias_detected model
+(
+  block(
+   points 4
+   point[0] [ 0.020 0.020 ]
+   point[1] [ 0.020 -0.020 ]
+   point[2] [ -0.020 -0.020 ]
+   point[3] [ -0.020 0.020 ]
+   z [ 0.000 0.015 ]
+   # color "cyan"
+   color_rgba [ 0.0 0.0 0.0 0.0 ]
+  )
+  ranger_return 1.0
+)
+
 define colias position
 (
   color "red"
+
+  # color_rgba [ 0.0 0.0 1.0 0.3 ]
   # make it small so that upper board can be displayed
-  size [ 0.001 0.001 0.000 ]
+  size [ 0.001 0.001 0.0 ]
 
   # wheels are controlled independently
   drive "diff"
@@ -171,9 +200,15 @@ define colias position
   origin [ 0.0 0.0 0.0 0.0 ] 
   gui_nose 1
   mass 0.028 # kilogram
-  ranger_return 1.0 # to distinguish robots from obstacles
+  # ranger_return 1.0 # to distinguish robots from obstacles
+  fiducial_key 2
+
+  localization "gps"  # to detect its position 
 
   # plugins defined above
   colias_bottom_board( pose [ 0.0 0.0 0.012 0.0 ] )
   colias_upper_board( pose [ 0.0 0.0 0.034 0.0 ] )
+
+
+ 
 )

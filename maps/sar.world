@@ -4,6 +4,7 @@
 
 include "map.inc"
 include "../robots/colias.inc"
+include "../robots/sensors.inc"
 include "../targets/survivor.inc"
 
 # time to quit the simulation
@@ -51,15 +52,26 @@ simpleMap
   pose [ 0 0 0 0 ]
 )
 
-colias(
+define sim_colias colias
+(
+  # colias_bumpers() ranger 0 
+  # colias_irs() ranger 1 
+  robot_detector()  # fiducialfinder 0
+  source_detector() # fiducialfinder 1
+)
+
+
+sim_colias(
   name "robot1"
-  pose [ -0.40 -0.83 0.0 0.0]
+  pose [ -0.40 -0.83 0.0 180]
+  fiducial_return 1
 
 )
 
-colias(
+sim_colias(
   name "robot2"
   pose [ -0.45 -0.83 0.0 0.0]
+  fiducial_return 2
 
 )
 
