@@ -16,7 +16,7 @@
 using namespace std;
 using namespace PlayerCc;
 
-#define ROBOTS_COUNT 2 	// the amount of robots
+#define ROBOTS_COUNT 10 	// the amount of robots
 #define F_MAX 15	// max value of fitness
 #define UPDATE_INTERVAL 2000 // millisecond
 
