@@ -14,7 +14,7 @@ if [ -z "$1" ]; then
     exit
 fi
 
-ROBOT_COUNT=$1
+ROBOTS_COUNT=$1
 
 X_SIZE=8	# default size of map
 Y_SIZE=8
@@ -50,7 +50,7 @@ define sim_colias colias
 local SIM_COLIAS_DECLARE='sim_colias( name "robot%d" pose [ %.2f %.2f 0.0 %d] fiducial_return %d )\n'
 
 	printf "$SIM_COLIAS_DEF"
-    for i in `seq 1 $ROBOT_COUNT`; do
+    for i in `seq 1 $ROBOTS_COUNT`; do
     	random_pose_generator
     	printf "$SIM_COLIAS_DECLARE" $i $x_pose $y_pose $angle $i
     done
@@ -77,7 +77,7 @@ local DRIVES_DECLARE='driver(
 '
 
 	printf "$DRIVES_MAP_DECLARE"
-	for i in `seq 0 $(($ROBOT_COUNT-1))`; do
+	for i in `seq 0 $(($ROBOTS_COUNT-1))`; do
 		printf "$DRIVES_DECLARE" $i $((i*2)) $((i*2+1)) $((i*2)) $((i*2+1)) $((i+1)) 
 	done
 }
@@ -98,4 +98,10 @@ generate_config output_robots_config 'robots/sim_colias.inc'
 generate_config output_drives_config './sar.cfg'
 player sar.cfg &
 
+cd controllers
+# replace the parameter in header config.h
+PATTERN="s/^\(#define ROBOTS_COUNT\) \([0-9]*\)/\1 $ROBOTS_COUNT/g"
+sed -i.bak "$PATTERN" 'config.h'
+make clean
+make
 

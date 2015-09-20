@@ -33,7 +33,7 @@ window
   # GUI options
   show_data 1
   show_grid 1
-  show_flags 1
+  show_flags 0
   show_blocks 1
   show_clock 1
   show_footprints 0

@@ -3,16 +3,22 @@
 # Author: Yang Xiao
 # Date: 10 September 2015
 
-# it is already implemented in the Colias, however can not
+# To measure the bearing and distance of the neighbour robots
+# It is already implemented in the Colias, however can not
 # be simulated in player/stage since it's not able to receive 
 # IR emitted by other robots. So we use the fiducial finder
 # with 360 degree to replace.
 define robot_detector fiducial
 (
-  range_min 0.0
-  range_max 0.3
+  # with the short-range communication, colias exhibited relatively reliable 
+  # coommunication at a distance of less than 12cm
+  # with the long-range communcation, it could communicate up to
+  # 2 m with an accptable error rate
+  # to simplify the question, we set the range as [0.0, 2.0]
+  range_min 0.0 
+  range_max 1.0
   # the maximum range at which the sensor can detect the ID of a fiducial
-  range_max_id 0.3
+  range_max_id 1.0
   # feild of view is 360 degree
   fov 360
   # ignores the z component when checking a fiducial
@@ -21,14 +27,15 @@ define robot_detector fiducial
   size [ 0.004 0.006 0.004 ]
 )
 
-# assume a detector developed to identify the strength of the signal which 
-# called fitness. we adopt Fmax - (the distance to the fiducial point) 
-# as the value of fitness
+
+# To identify the strength of the signal which called fitness.
+# We adopt Fmax - (the distance to the fiducial point) as the value.
 define source_detector fiducial
 (
+  # 
   range_min 0.0
-  range_max 3.0
-  range_max_id 3.0
+  range_max 1.5
+  range_max_id 1.5
 
   fov 360
   ignore_zloc 1

@@ -16,33 +16,22 @@ define colias_ir sensor
 
 )
 
+# IR decoder and SPI port actually
+# reflect rays emitted by IR emitter
 define colias_ir_block model
 (
   color "gray40"
-  size [ 0.004 0.008 0.004 ]
+  size [ 0.002 0.010 0.005 ]
 
   block(
   	points 4
-  	point[0] [ 0.0020 0.004 ]
-  	point[1] [ -0.0020 0.004 ]
-  	point[2] [ -0.0020 -0.004 ]
-  	point[3] [ 0.0020 -0.004 ]
-  	z [ 0.000 0.004 ]
+  	point[0] [ 0.0010 0.005 ]
+  	point[1] [ -0.0010 0.005 ]
+  	point[2] [ -0.0010 -0.005 ]
+  	point[3] [ 0.0010 -0.005 ]
+  	z [ 0.000 0.005 ]
   )
 )
-
-
-# define colias_irs ranger
-# (
-  
-#   # uniformly distributed around the circle
-#   colias_ir( pose [ 0.0 0.0 -0.0035 60] )
-#   colias_ir( pose [ 0.0 0.0 -0.0035 0] )
-#   colias_ir( pose [ 0.0 -0.0 -0.0035 -60] )
-#   colias_ir( pose [-0.0 -0.0 -0.0035 -120] )
-#   colias_ir( pose [-0.0 0.0000 -0.0035 180] )
-#   colias_ir( pose [-0.0 0.0 -0.0035 120] )
-# )
 
 # long-range system is composed of 6 IR proximity sensors (each 60 degree on
 # on the upper board) for obstacle and robot detection. 
@@ -75,20 +64,46 @@ define colias_ir_blocks model
 # to detect bump with short range
 define colias_bumper sensor
 (
-  color "gray"
+  color "DarkBlue"
   size [ 0.004 0.010 0.004 ] # NOT accurate
-  range [ 0.000 0.030 ] # 3 +(-)0.5cm
-  fov 15
+  range [ 0.000 0.030 ] # actual 3 +(-)0.5cm
+  fov 15  # actual 15 degree
 
+)
+
+# reflect rays emitted by bumper
+define colias_bumper_block model
+(
+  color "gray40"
+  size [ 0.002 0.008 0.004 ]
+
+  block(
+    points 4
+    point[0] [ 0.0010 0.004 ]
+    point[1] [ -0.0010 0.004 ]
+    point[2] [ -0.0010 -0.004 ]
+    point[3] [ 0.0010 -0.004 ]
+    z [ 0.000 0.004 ]
+  )
 )
 
 # short-range system is composed of 3 bump sensors (each 30 degree placed
 # at the bottom board). mostly used as a cue in the groud-level task.
 define colias_bumpers ranger
 (
-  colias_bumper( pose [ 0.0220 0.0125 0.0 30 ] )
-  colias_bumper( pose [ 0.0250 0.0000 0.0 0 ] )
-  colias_bumper( pose [ 0.0220 0.0125 0.0 -30] )
+  colias_bumper( pose [ 0.0220 0.0125 0.002 30 ] )
+  colias_bumper( pose [ 0.0250 0.0000 0.002 0 ] )
+  colias_bumper( pose [ 0.0220 -0.0125 0.002 -30] )
+)
+
+define colias_bumper_blocks model
+(
+  size [ 0.0001 0.0001 0.000 ]
+  color_rgba [ 1 0 0 1 ]
+
+  colias_bumper_block( pose [ 0.0220 0.0125 0.0 30 ] )
+  colias_bumper_block( pose [ 0.0250 0.0000 0.0 0 ] )
+  colias_bumper_block( pose [ 0.0220 -0.0125 0.0 -30] )
 )
 
 define colias_wheel model
@@ -167,6 +182,7 @@ define colias_bottom_board model
   	pose [ -0.008 -0.022 0.0 0.000 ]
   )
   colias_bumpers()
+  colias_bumper_blocks()
 
 )
 

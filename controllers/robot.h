@@ -13,14 +13,23 @@
 class Robot
 {
 public:
+    const int id_;	// corresponds its fiducial return 
     Robot(PlayerClient* client, int index);
     ~Robot();
-    const int id_;	// corresponds its fiducial return 
-    void SetSpeed(double x, double y, double angle);
-    void set_fitness(int value);
-    int get_fitness();
-    void Run();
-    void VoidObstacle();
+    void Run(double& forward_speed, double& turn_speed);
+    void VoidObstacles();
+    void UpdateFitness();
+    int GetSourceIntensity();
+    int DetectFitness(player_pose3d_t pose); 
+    void SetVelocity(double x, double y);
+    void SetVelocity(double x, double y, double normal);
+    double GetObstacleBearing(double& x, double& y);
+    void Normalization(double& x, double& y);
+	bool InBumperRange();
+	bool GotStuckIn();
+
+	double GetIRRangerIntensity(int ranger_index);
+ 	int GetIRRangerCount();
 
     int GetNeighboursCount();
     // neighbours_index counted from 0 to GetNeighboursCount()-1
@@ -29,18 +38,29 @@ public:
     player_pose3d_t GetNeighbourPoseError(int neighbours_index);
     player_fiducial_item_t GetNeighbour(int neighbours_index);
 
+    void SetSpeed(double x, double y, double angle);
+    void SetSpeed(double x, double angle);
+    void set_fitness(int value);
+    int get_fitness();
     void set_group_index(int group_index){ group_index_=group_index; }
     int get_group_index(){ return group_index_; }
-    void GetSourceIntensity();    
+
     void PrintInterfaces();
 
 private:
     int fitness_;
     int group_index_;
     Position2dProxy engine_;
+    RangerProxy bumper_;
     RangerProxy infrared_;
     FiducialProxy robot_detector_;
     FiducialProxy source_detector_;
+
+    double velocity_x_;
+    double velocity_y_;
+    const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
+    const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
+    const double cos_radians_between_irs_ [6] = { 0.5, 1, 0.5, -0.5, -1, -0.5 };
 };
 
 // Robots with its neighbours form a group
@@ -57,7 +77,8 @@ public:
 	void JoinGroup(const int robot_id);
 	// calculates the center and fittest center
 	void Update(int* fitness_array);
-	void ResetPose3dT(player_pose3d_t p);
+	void WeightGroupSpeed(double& forward_speed, double& turn_speed);
+	void ResetPose3dT(player_pose3d_t& p);
 	// sets all bits 1
 	void FillBitset();
 	// sets all bits 0
@@ -71,10 +92,10 @@ public:
 	player_pose3d_t GetCenter(Robot* robot);
 	player_pose3d_t GetFittestCenter(Robot* robot);
 	player_pose3d_t AddPose(player_pose3d_t p1, player_pose3d_t p2){
-		p1.px += p2.px; p1.py += p2.py; p1.pyaw += p2.pyaw; return p1; }
+		p1.px += p2.px; p1.py += p2.py; return p1; }
 	player_pose3d_t AveragePose(player_pose3d_t p, int count){
-		p.px /= count; p.py /= count; p.pyaw /= 3.1415926; return p;
-	}
+		p.px /= count; p.py /= count; return p;
+	} // TODO: get the right average yaw
 	int get_fiducial_robot_id(){ return fiducial_robot_id_; }
 private:
 	// each bit stands for a corresponding robot whose index is (i+1)
@@ -88,6 +109,7 @@ private:
 	Robot* fiducial_robot_;
 	int fiducial_robot_id_;
 	int group_size_;
+
 };
 
 #endif
