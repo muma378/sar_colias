@@ -190,7 +190,7 @@ bool Robot::InBumperRange(){
 bool Robot::GotStuckIn(){
 	if (id_==2){
 		Place* place = history_memory_.GetPlaceWithMaxFitness();
-		cout << "get the place with max fitness: " << *place << endl;
+		// cout << "get the place with max fitness: " << *place << endl;
 	}
 	return false;
 }
@@ -200,7 +200,7 @@ void Robot::SaveCurrentPlace(){
 	double y = engine_.GetYPos();
 	Place* place = new Place(x, y, fitness_);
 	if (id_==2){
-		cout << *place << endl;
+		// cout << *place << endl;
 	}
 	// history_memory_.Save( new Place(x, y, fitness_) );
 	history_memory_.Save( place );

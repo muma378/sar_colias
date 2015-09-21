@@ -8,6 +8,10 @@
 if [ -z "$1" ]; then
 	if [[ -e 'sar.cfg' ]]; then
 		player sar.cfg &
+		cd ./controllers
+		make clean
+		make
+		./sar_colias
 		exit
 	fi
     echo usage: $0 robots_count [x_size*y_size]
@@ -104,4 +108,5 @@ PATTERN="s/^\(#define ROBOTS_COUNT\) \([0-9]*\)/\1 $ROBOTS_COUNT/g"
 sed -i.bak "$PATTERN" 'config.h'
 make clean
 make
+./sar_colias
 
