@@ -9,6 +9,7 @@
 
 #include <bitset>
 #include "config.h"
+#include "utils.h"
 
 class Robot
 {
@@ -19,14 +20,15 @@ public:
     void Run(double& forward_speed, double& turn_speed);
     void VoidObstacles();
     void UpdateFitness();
+    int Gating(int actual);
     int GetSourceIntensity();
-    int DetectFitness(player_pose3d_t pose); 
+    int GenerateFitness(player_pose3d_t pose); 
     void SetVelocity(double x, double y);
     void SetVelocity(double x, double y, double normal);
     double GetObstacleBearing(double& x, double& y);
-    void Normalization(double& x, double& y);
 	bool InBumperRange();
 	bool GotStuckIn();
+	void SaveCurrentPlace();
 
 	double GetIRRangerIntensity(int ranger_index);
  	int GetIRRangerCount();
@@ -56,8 +58,8 @@ private:
     FiducialProxy robot_detector_;
     FiducialProxy source_detector_;
 
-    double velocity_x_;
-    double velocity_y_;
+    Vector2d velocity_;
+    HistoryMemory history_memory_;
     const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
     const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
     const double cos_radians_between_irs_ [6] = { 0.5, 1, 0.5, -0.5, -1, -0.5 };

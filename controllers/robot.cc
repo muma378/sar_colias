@@ -77,7 +77,23 @@ void Robot::SetVelocity(double x, double y, double normal){
 
 // TODO: fitness shall be effected by many other factors
 void Robot::UpdateFitness(){
-	fitness_ = GetSourceIntensity();
+	int fitness = GetSourceIntensity();
+	fitness_ = fitness==0?Gating(fitness):fitness;
+	SaveCurrentPlace();
+}
+
+// if the value much less or bigger than previous ones
+// then leave it alone
+int Robot::Gating(int actual){
+	int estimate = history_memory_.EstimateFitness();
+	estimate = estimate==-1?actual:estimate;	
+	int fall = estimate - actual;
+	if (abs(fall) > GATING_FITNESS){
+		return estimate;
+	}else{
+		return actual;
+	}
+
 }
 
 void Robot::Run(double& forward_speed, double& turn_speed){
@@ -93,7 +109,7 @@ void Robot::Run(double& forward_speed, double& turn_speed){
 void Robot::VoidObstacles(){
 	double turn_speed = 0;
 	double forward_speed = 0;
-	if (InBumperRange()){	//	random rotating untill not in the range
+	if ( InBumperRange() || GotStuckIn() ){	//	random rotating untill not in the range
 		turn_speed = random()%10==0?PI/2:-PI/2;
 		// cout << "ROBOT " << id_ << " in bumper range! Rotate speed " << turn_speed << endl;
 		forward_speed = - 0.15;
@@ -119,12 +135,6 @@ void Robot::VoidObstacles(){
 	SetSpeed(forward_speed, turn_speed);
 
 }
-
-void Robot::Normalization(double& x, double& y){
-	double length = sqrt(x*x+y*y);
-	x /= length;
-	y /= length;
-} 
 
 // get the bearing of obstacle with data read from all irs
 double Robot::GetObstacleBearing(double& x, double& y){
@@ -177,6 +187,25 @@ bool Robot::InBumperRange(){
 	return false;
 }
 
+bool Robot::GotStuckIn(){
+	if (id_==2){
+		Place* place = history_memory_.GetPlaceWithMaxFitness();
+		cout << "get the place with max fitness: " << *place << endl;
+	}
+	return false;
+}
+
+void Robot::SaveCurrentPlace(){
+	double x = engine_.GetXPos();
+	double y = engine_.GetYPos();
+	Place* place = new Place(x, y, fitness_);
+	if (id_==2){
+		cout << *place << endl;
+	}
+	// history_memory_.Save( new Place(x, y, fitness_) );
+	history_memory_.Save( place );
+}
+
 int Robot::GetNeighboursCount(){
 	return robot_detector_.GetCount();
 }
@@ -204,12 +233,12 @@ int Robot::GetSourceIntensity(){
 	int fitness = 0;
 	for (int i = 0; i < source_detector_.GetCount(); ++i){
 		pose = source_detector_.GetFiducialItem(i).pose;
-		fitness=fitness<DetectFitness(pose)?DetectFitness(pose):fitness;
+		fitness=fitness<GenerateFitness(pose)?GenerateFitness(pose):fitness;
 	}
 	return fitness;
 }
 
-int Robot::DetectFitness(player_pose3d_t pose){
+int Robot::GenerateFitness(player_pose3d_t pose){
 	return (1-DISTANCE(pose.px, pose.py)/DETECT_SOURCE_RANGE)*F_MAX;
 }
 

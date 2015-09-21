@@ -9,14 +9,17 @@ OPENCV_LDFLAGS = `pkg-config --libs opencv`
 CFLAGS += $(PLAYERCPP_CFLAGS) $(OPENCV_CFLAGS)
 LDFLAGS = $(PLAYERCPP_LDFLAGS) $(OPENCV_LDFLAGS)
 
-sar_colias: swarm.o robot.o
-	$(CC) swarm.o robot.o -o sar_colias $(LDFLAGS)
+sar_colias: swarm.o robot.o utils.o
+	$(CC) swarm.o robot.o utils.o -o sar_colias $(LDFLAGS)
 
 swarm.o: swarm.cc swarm.h config.h
 	$(CC) $(CFLAGS) swarm.cc
 
 robot.o: robot.cc robot.h
 	$(CC) $(CFLAGS) robot.cc
+
+utils.o: utils.cc utils.h
+	$(CC) $(CFLAGS) utils.cc
 
 clean:
 	rm -f *.o *.c~ *.h~ simple

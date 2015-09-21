@@ -213,18 +213,18 @@ define colias position
   # wheels are controlled independently
   drive "diff"
   # center of rotation
-  origin [ 0.0 0.0 0.0 0.0 ] 
+  origin [ 0.0 0.0 0.0 0.0 ]
   gui_nose 1
+  obstacle_return 1 
   mass 0.028 # kilogram
   # ranger_return 1.0 # to distinguish robots from obstacles
-  fiducial_key 2
+  fiducial_key 2  # can detect other robots
 
-  localization "gps"  # to detect its position 
+  localization "odom"  # to detect its position 
+  odom_error [ 0.03 0.03 0.00 0.05 ]
 
   # plugins defined above
   colias_bottom_board( pose [ 0.0 0.0 0.012 0.0 ] )
   colias_upper_board( pose [ 0.0 0.0 0.034 0.0 ] )
-
-
  
 )

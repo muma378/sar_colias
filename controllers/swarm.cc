@@ -176,11 +176,15 @@ int main(int argc, char const *argv[])
   	swarm.Test();
   	while(true){
   		client.Read();
-  		
+  		cout << " 0 ";
   		swarm.DetectSignals();
+  		cout << " 1 ";
 		swarm.Grouping();
+  		cout << " 2 ";
 		swarm.UpdateVelocities();
+  		cout << " 3 ";
 		swarm.CollectTargets();
+  		cout << " 4 " << endl;
   		usleep(UPDATE_INTERVAL);
   	}
 

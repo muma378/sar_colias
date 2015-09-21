@@ -24,7 +24,6 @@ public:
 	void UpdateVelocities();
 	void CollectTargets();
 
-
 	// updates groups which hava at least one common element
 	void UpdateConnectedGroups();
 	void CalculateCenter();
