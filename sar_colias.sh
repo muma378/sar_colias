@@ -8,10 +8,10 @@
 if [ -z "$1" ]; then
 	if [[ -e 'sar.cfg' ]]; then
 		player sar.cfg &
-		cd ./controllers
-		make clean
-		make
-		./sar_colias
+		# cd ./controllers
+		# make clean
+		# make
+		# ./sar_colias
 		exit
 	fi
     echo usage: $0 robots_count [x_size*y_size]

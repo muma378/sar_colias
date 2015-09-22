@@ -17,28 +17,32 @@ public:
     const int id_;	// corresponds its fiducial return 
     Robot(PlayerClient* client, int index);
     ~Robot();
-    void Run(double& forward_speed, double& turn_speed);
+    void Run(Pose& velocity);
     void VoidObstacles();
     void UpdateFitness();
     int Gating(int actual);
     int GetSourceIntensity();
-    int GenerateFitness(player_pose3d_t pose); 
+    int GenerateFitness(Pose* pose); 
+    void SetVelocity(const Vector2d& velocity);
     void SetVelocity(double x, double y);
-    void SetVelocity(double x, double y, double normal);
-    double GetObstacleBearing(double& x, double& y);
+    double GetObstacleBearing();
 	bool InBumperRange();
-	bool GotStuckIn();
+	// bool GotStuckIn();
+	// bool SystemCrashed();
 	void SaveCurrentPlace();
-
 	double GetIRRangerIntensity(int ranger_index);
  	int GetIRRangerCount();
 
     int GetNeighboursCount();
     // neighbours_index counted from 0 to GetNeighboursCount()-1
     int GetNeighbourId(int neighbours_index);
-    player_pose3d_t GetNeighbourPose(int neighbours_index);
-    player_pose3d_t GetNeighbourPoseError(int neighbours_index);
+    Pose* GetNeighbourPose(int neighbours_index);
+    Pose* GetNeighbourPose(Robot& robot);
+    Pose* GetNeighbourPoseError(int neighbours_index);
     player_fiducial_item_t GetNeighbour(int neighbours_index);
+    Pose* GetSourcePose(int source_index);
+	Place GetCurrentPlace();
+	Pose GetCurrentPose();
 
     void SetSpeed(double x, double y, double angle);
     void SetSpeed(double x, double angle);
@@ -48,6 +52,8 @@ public:
     int get_group_index(){ return group_index_; }
 
     void PrintInterfaces();
+    void TestPoseClass(int neighbours_index);
+
 
 private:
     int fitness_;
@@ -58,7 +64,7 @@ private:
     FiducialProxy robot_detector_;
     FiducialProxy source_detector_;
 
-    Vector2d velocity_;
+    Vector2d last_velocity_;
     HistoryMemory history_memory_;
     const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
     const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
@@ -79,38 +85,35 @@ public:
 	void JoinGroup(const int robot_id);
 	// calculates the center and fittest center
 	void Update(int* fitness_array);
-	void WeightGroupSpeed(double& forward_speed, double& turn_speed);
-	void ResetPose3dT(player_pose3d_t& p);
-	// sets all bits 1
-	void FillBitset();
-	// sets all bits 0
-	void ClearBitset();
+	Pose WeightGroupVelocity(Robot& robot);
+	Pose VelocityDepartCenter(Robot& robot);
+	Pose VelocityAsFitnessGradient(Robot& robot);
+	void FillBitset();		// sets all bits 1
+	void ClearBitset();		// sets all bits 0
 	// returns the robot next to the robot_id in the group
 	int NextMemberIndex(int robot_index);
 	bitset<ROBOTS_COUNT> get_members_bitset(){
 		return members_bitset_;
 	}
 	// hides the process of calculation, returns the pose relative to current one
-	player_pose3d_t GetCenter(Robot* robot);
-	player_pose3d_t GetFittestCenter(Robot* robot);
-	player_pose3d_t AddPose(player_pose3d_t p1, player_pose3d_t p2){
-		p1.px += p2.px; p1.py += p2.py; return p1; }
-	player_pose3d_t AveragePose(player_pose3d_t p, int count){
-		p.px /= count; p.py /= count; return p;
-	} // TODO: get the right average yaw
+	Pose GetCenter(Robot& robot);
+	Pose GetCenterWithMaxFitness(Robot& robot);
+	
 	int get_fiducial_robot_id(){ return fiducial_robot_id_; }
+    void TestTranslateCoordinate();
+
 private:
 	// each bit stands for a corresponding robot whose index is (i+1)
 	bitset<ROBOTS_COUNT> members_bitset_;
 	// the group's center is relative to the fiducial point
-	player_pose3d_t center_;
+	Pose center_;
 	// center of the robots with maximum fitness in the group
-	player_pose3d_t fittest_center_;
+	Pose center_with_max_fitness_;
 	// fiducial point is the place where the first robot at
-	// player_pose3d_t fiducial_point_;
 	Robot* fiducial_robot_;
 	int fiducial_robot_id_;
 	int group_size_;
+	bool identical_fitness_;
 
 };
 

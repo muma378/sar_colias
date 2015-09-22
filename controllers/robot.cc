@@ -26,8 +26,6 @@ void Robot::PrintInterfaces(){
 }
 
 void Robot::SetSpeed(double x, double y, double angle){
-	// engine_.SetSpeed(x, y, angle);
-	// engine_.SetVelHead(x, angle);
 	engine_.SetSpeed(x, angle);
 }
 
@@ -43,43 +41,32 @@ int Robot::get_fitness(){
 	return fitness_;
 }
 
-void Robot::SetVelocity(double x, double y){
-	SetVelocity(x, y, COMMUNICATE_RANGE);
-}
-
-void Robot::SetVelocity(double x, double y, double normal){
-	double turn_speed;
-	double forward_speed;
-	double small_error = 0.09;	// 5 degree
-	// TODO:test if x can be 0
-	double radians = atan( y/x );
-	// tune the radians when angle is bigger than 90 degree
-	if ( x<0 && y<0 ){	// the third quadrant
-		radians = radians - PI;
-	}
-	if ( x<0 && y>0 ){	// the second quadrant
-		radians = PI - radians;
-	}
-	// if it was heading to the target
-	if ( abs(radians)<=small_error ){
-		turn_speed = 0;
-		double distance = sqrt((x*x)+(y*y));
-		forward_speed = (distance/normal)*MAX_SPEED*ACCELATOR;
-	}else{
+void Robot::SetVelocity(const Vector2d& velocity){
+	last_velocity_ = velocity;
+	cout << velocity;
+	double forward_speed = 0;
+	double turn_speed = 0;
+	double radians = velocity.Radian();
+	if (abs(radians)<=SMALL_RADIAN_ERROR) {
+		forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
+	} else {
 		// make sure turns in the max speed but won't be over-tuned
 		turn_speed = radians/UPDATE_INTERVAL*1000;
 		turn_speed = abs(turn_speed)>TURN_SPEED_BOUND?TURN_SPEED_BOUND\
 					  :turn_speed;
-		forward_speed = 0;
 	}
 	SetSpeed(forward_speed, turn_speed);
+}
+
+void Robot::SetVelocity(double x, double y){
+	Vector2d vec(x, y);
+	SetVelocity(vec);
 }
 
 // TODO: fitness shall be effected by many other factors
 void Robot::UpdateFitness(){
 	int fitness = GetSourceIntensity();
 	fitness_ = fitness==0?Gating(fitness):fitness;
-	SaveCurrentPlace();
 }
 
 // if the value much less or bigger than previous ones
@@ -96,12 +83,33 @@ int Robot::Gating(int actual){
 
 }
 
-void Robot::Run(double& forward_speed, double& turn_speed){
-	//	TODO: velocity is affected by group, history and obstacles
-	
-	SetSpeed(0.35, 0);
+void Robot::Run(Pose& velocity){
+	// velocity is affected by group, history and obstacles
+	// only one robot in the group
+	if (id_==1)
+		cout << "move to: ";
+	if (velocity.IsAtOrigin()){
+		// and there was a fitness higher than current one
+		if (fitness_>history_memory_.GetMaxFitness()){
+			Vector2d vec = GetCurrentPlace() - 
+					   	   *(history_memory_.GetPlaceWithMaxFitness());
+			if (id_==1)
+				cout << "strategy 4 " << vec << endl;
+			SetVelocity(vec);
+		} else {
+			if (id_==1)
+				cout << "strategy 3 " << endl;
+			// else keep the previous velocity
+			SetVelocity(last_velocity_);
+		}
+	} else {
+		if (id_==1)
+			cout << velocity << endl;
+		SetVelocity(velocity);
+	}
+	// SetSpeed(0.25, 0);
 	VoidObstacles();
-
+	SaveCurrentPlace();
 }
 
 // TODO: robot reflects when detecting obstacles
@@ -109,16 +117,14 @@ void Robot::Run(double& forward_speed, double& turn_speed){
 void Robot::VoidObstacles(){
 	double turn_speed = 0;
 	double forward_speed = 0;
-	if ( InBumperRange() || GotStuckIn() ){	//	random rotating untill not in the range
+	if (InBumperRange()){	//	random rotating untill not in the range
 		turn_speed = random()%10==0?PI/2:-PI/2;
 		// cout << "ROBOT " << id_ << " in bumper range! Rotate speed " << turn_speed << endl;
 		forward_speed = - 0.15;
 		SetSpeed(forward_speed, turn_speed);
 		return;
 	}
-	double x;
-	double y;
-	double obstacle_bearing = GetObstacleBearing(x, y);
+	double obstacle_bearing = GetObstacleBearing();
 	if (abs(obstacle_bearing)==PI){
 		return;
 	}
@@ -137,9 +143,9 @@ void Robot::VoidObstacles(){
 }
 
 // get the bearing of obstacle with data read from all irs
-double Robot::GetObstacleBearing(double& x, double& y){
-	y = 0;
-	x = 0;
+double Robot::GetObstacleBearing(){
+	double y = 0;
+	double x = 0;
 	for (int i = 0; i < GetIRRangerCount(); ++i){	// only use the front ir rangers
 		double intensity = GetIRRangerIntensity(i);
 		// cout << intensity << "-" ;
@@ -187,25 +193,6 @@ bool Robot::InBumperRange(){
 	return false;
 }
 
-bool Robot::GotStuckIn(){
-	if (id_==2){
-		Place* place = history_memory_.GetPlaceWithMaxFitness();
-		// cout << "get the place with max fitness: " << *place << endl;
-	}
-	return false;
-}
-
-void Robot::SaveCurrentPlace(){
-	double x = engine_.GetXPos();
-	double y = engine_.GetYPos();
-	Place* place = new Place(x, y, fitness_);
-	if (id_==2){
-		// cout << *place << endl;
-	}
-	// history_memory_.Save( new Place(x, y, fitness_) );
-	history_memory_.Save( place );
-}
-
 int Robot::GetNeighboursCount(){
 	return robot_detector_.GetCount();
 }
@@ -214,12 +201,27 @@ int Robot::GetNeighbourId(int neighbours_index){
 	return robot_detector_.GetFiducialItem(neighbours_index).id;
 }
 
-player_pose3d_t Robot::GetNeighbourPose(int neighbours_index){
-	return robot_detector_.GetFiducialItem(neighbours_index).pose;
+
+Pose* Robot::GetNeighbourPose(int neighbours_index){
+	// TestPoseClass(neighbours_index);
+	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).pose);
 }
 
-player_pose3d_t Robot::GetNeighbourPoseError(int neighbours_index){
-	return robot_detector_.GetFiducialItem(neighbours_index).upose;
+Pose* Robot::GetNeighbourPose(Robot& robot){
+	for (int i = 0; i < GetNeighboursCount(); ++i){
+		if (GetNeighbourId(i)==robot.id_){
+			return GetNeighbourPose(i);
+		}
+	}
+	throw out_of_range("Not in the list of neighbours");
+}
+
+Pose* Robot::GetNeighbourPoseError(int neighbours_index){
+	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).upose);
+}
+
+Pose* Robot::GetSourcePose(int source_index){
+	return new Pose(source_detector_.GetFiducialItem(source_index).pose);
 }
 
 player_fiducial_item_t Robot::GetNeighbour(int neighbours_index){
@@ -229,17 +231,66 @@ player_fiducial_item_t Robot::GetNeighbour(int neighbours_index){
 // intensity increases as the distance decreases
 // if several sources exist at the same time, choose the highest one
 int Robot::GetSourceIntensity(){
-	player_pose3d_t pose;
+	Pose* pose;
 	int fitness = 0;
 	for (int i = 0; i < source_detector_.GetCount(); ++i){
-		pose = source_detector_.GetFiducialItem(i).pose;
+		pose = GetSourcePose(i);
 		fitness=fitness<GenerateFitness(pose)?GenerateFitness(pose):fitness;
+		delete pose;
 	}
 	return fitness;
 }
 
-int Robot::GenerateFitness(player_pose3d_t pose){
-	return (1-DISTANCE(pose.px, pose.py)/DETECT_SOURCE_RANGE)*F_MAX;
+int Robot::GenerateFitness(Pose* pose){
+	return (1-pose->Magnitude()/DETECT_SOURCE_RANGE)*F_MAX;
+}
+
+// bool Robot::GotStuckIn(){
+// 	if (history_memory_.ScaleSameRecords()==StationaryScaler::STUCK){
+// 		return true;
+// 	}else{
+// 		return false;
+// 	}
+// }
+
+// bool Robot::SystemCrashed(){
+// 	if (history_memory_.ScaleSameRecords()==StationaryScaler::CRASHED){
+// 		return true;
+// 	}else{
+// 		return false;
+// 	}
+// }
+
+void Robot::SaveCurrentPlace(){
+	double x = engine_.GetXPos();
+	double y = engine_.GetYPos();
+	history_memory_.Save( new Place(x, y, fitness_) );
+	if (id_==1){
+		Place* place = new Place(x, y, fitness_);
+		cout << "Robot " << id_ << " : " << *place << endl;
+	}
+}
+
+Place Robot::GetCurrentPlace(){
+	Place place(engine_.GetXPos(), engine_.GetYPos(), fitness_);
+	return place;
+}
+
+Pose Robot::GetCurrentPose(){
+	// as the origin of a coordinate system
+	Pose pose(0, 0, 0);
+	return pose;
+}
+
+void Robot::TestPoseClass(int neighbours_index){
+	player_pose3d_t pose0 = robot_detector_.GetFiducialItem(neighbours_index).pose;
+	Pose* pose1 = new Pose(pose0);
+	Pose* pose2 = new Pose(pose0);
+	cout << "player_pose3d_t: " << pose0;
+	cout << "pose: " << *pose1;
+	cout << "pose sum: " << (*pose1)+(*pose2);
+	cout << "pose divide: " << (*pose1)/2 << endl;
+
 }
 
 Group::Group(Robot* robot)
@@ -259,8 +310,8 @@ void Group::ReConstruct(Robot* robot){
 
 void Group::Initialize(Robot* robot){
 	ClearBitset();
-	ResetPose3dT(center_);
-	ResetPose3dT(fittest_center_);
+	center_.Clear();
+	center_with_max_fitness_.Clear();
 
 	JoinGroup(robot->id_);
 	// includes itself
@@ -282,42 +333,89 @@ void Group::JoinGroup(const int robot_id){
 
 // calculates the center and fittest center
 void Group::Update(int* fitness_array){
-	// cout << "fitness array:\n";
-	// for (int i = 0; i < ROBOTS_COUNT; ++i){
-	// 	cout << fitness_array[i] << endl;
-	// }
-	player_pose3d_t pose;
-	ResetPose3dT(center_);
-	ResetPose3dT(fittest_center_);
+	Pose* pose;
+	// it is also the coordinate of the fiducial robot
+	center_.Clear();
+	center_with_max_fitness_.Clear();
 	int max_fitness_ = fiducial_robot_->get_fitness();
-	int fittest_count = 1;
+	int max_fitness_counter = 1;
 	for (int i = 0; i < group_size_-1 ; ++i){	// not includes itself
-		// cout << "Neighbour pose: " << fiducial_robot_->GetNeighbourPose(i) << endl;
-		// cout << "Center: " << center_ << endl;
 		pose = fiducial_robot_->GetNeighbourPose(i);
-		center_ = AddPose(center_, pose);
-		// cout << "add poes: " << center_ << endl;
+		center_ +=  *pose;
 		int fitness = fitness_array[fiducial_robot_->GetNeighbourId(i)-1];
-		// cout << "member id: " << fiducial_robot_->GetNeighbourId(i) << "-fitness: " << fitness << endl;
-
+		// picks places with max fitness
 		if (max_fitness_==fitness){
-			fittest_center_ = AddPose(fittest_center_, pose);
-			fittest_count++;
+			center_with_max_fitness_ += *pose;
+			max_fitness_counter++;
 		}
 		if (max_fitness_<fitness){
 			max_fitness_ = fitness;
-			fittest_center_ = pose;
-			fittest_count = 1;
+			center_with_max_fitness_ = *pose;
+			max_fitness_counter = 1;
 		}
+		delete pose;
 	}
-	center_ = AveragePose(center_, group_size_);
-	fittest_center_ = AveragePose(fittest_center_, fittest_count);
-	// cout << "center : " << center_ <<endl;
-	// cout << "fittest_center_ : "<< fittest_center_<<endl;
+	center_ /= group_size_;
+	center_with_max_fitness_ /= max_fitness_counter;
+	identical_fitness_=max_fitness_counter==group_size_?true:false;
+	// cout << "center_with_max_fitness_ : "<< center_with_max_fitness_<<endl;
 }
 
-void Group::WeightGroupSpeed(double& forward_speed, double& turn_speed){
-	return;
+Pose Group::WeightGroupVelocity(Robot& robot){
+	Pose velocity;
+	if (identical_fitness_ && group_size_>=2){
+		if (robot.id_==1)
+			cout << "strategy 1 ";
+		velocity = VelocityDepartCenter(robot);
+	}else{
+		if (group_size_>GROUP_SIZE){
+			if (robot.id_==1)
+				cout << "strategy 1+2 ";
+			velocity = VelocityDepartCenter(robot);
+			velocity += VelocityAsFitnessGradient(robot);
+		}
+		if (group_size_<=GROUP_SIZE && group_size_>=2){
+			if (robot.id_==1)
+				cout << "strategy 2 ";
+			velocity = VelocityAsFitnessGradient(robot);
+		}
+	}
+	// if only one robot in the group, return velocity with (0, 0)
+	return velocity;
+	// TestTranslateCoordinate();
+}
+
+inline Pose Group::VelocityDepartCenter(Robot& robot){
+	Pose origin;
+	return origin-GetCenter(robot);
+}
+
+inline Pose Group::VelocityAsFitnessGradient(Robot& robot){
+	cout << "center :" << GetCenter(robot);
+	cout << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
+	return GetCenterWithMaxFitness(robot) - GetCenter(robot);
+}
+
+Pose Group::GetCenter(Robot& robot){
+	// cout << "Robot " << robot.id_ << " : ";
+	if (robot.id_==fiducial_robot_id_){
+		// cout << center_;
+		return center_;
+	}else{
+		// translate the coordinate system of the center_ to the robot's
+		return center_.TranslateCoordinate(
+			*(robot.GetNeighbourPose(*fiducial_robot_)));
+	}
+}
+
+Pose Group::GetCenterWithMaxFitness(Robot& robot){
+	if (robot.id_==fiducial_robot_id_){
+		return center_with_max_fitness_;
+	}else{
+		// translate the coordinate system of the center_ to the robot's
+		return center_with_max_fitness_.TranslateCoordinate(
+			*(robot.GetNeighbourPose(*fiducial_robot_)));
+	}
 }
 
 int Group::NextMemberIndex(int robot_index){
@@ -338,11 +436,9 @@ void Group::ClearBitset(){
 	members_bitset_.reset();
 }
 
-void Group::ResetPose3dT(player_pose3d_t& p){
-	p.px = 0;
-	p.py = 0;
-	p.pz = 0;
-	p.proll = 0;
-	p.ppitch = 0;
-	p.pyaw = 0;
+void Group::TestTranslateCoordinate(){
+	Pose current_pose(-1, -1, 0);
+	Pose relative_pose(0, 2, PI/4);
+	cout << "test tanslated coordinate: " << current_pose.TranslateCoordinate(relative_pose) << endl;
+
 }

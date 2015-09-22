@@ -17,9 +17,8 @@ Swarm::~Swarm(){}
 void Swarm::Test(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		it != robots_vector_.end(); ++it){
-		(*it)->SetSpeed(0.05, 0.50, 0);
+		(*it)->SetVelocity(0.1, 0.1);
 		// (*it)->PrintInterfaces();
-		//cout << (*it)->get_fitness() << endl;
 	}
 }
 
@@ -41,15 +40,15 @@ void Swarm::DetectSignals(){
 }
 
 void Swarm::UpdateVelocities(){
-	double forward_speed = 0;
-	double turn_speed = 0;
 	Group* belonging_group;
 
 	for (vector<Robot*>::iterator it = robots_vector_.begin();
 		 it != robots_vector_.end(); ++it){
+		// cout << "Robot " << (*it)->id_ << " uses ";
 		belonging_group = groups_vector_[(*it)->get_group_index()];
-		belonging_group->WeightGroupSpeed(forward_speed, turn_speed);
-		(*it)->Run(forward_speed, turn_speed);
+		Pose velocity = belonging_group->WeightGroupVelocity(**it);
+		// Pose velocity;	//  TO COMMENT
+		(*it)->Run(velocity);
 	}
 	return;
 }

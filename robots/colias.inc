@@ -187,21 +187,6 @@ define colias_bottom_board model
 )
 
 
-define colias_detected model
-(
-  block(
-   points 4
-   point[0] [ 0.020 0.020 ]
-   point[1] [ 0.020 -0.020 ]
-   point[2] [ -0.020 -0.020 ]
-   point[3] [ -0.020 0.020 ]
-   z [ 0.000 0.015 ]
-   # color "cyan"
-   color_rgba [ 0.0 0.0 0.0 0.0 ]
-  )
-  ranger_return 1.0
-)
-
 define colias position
 (
   color "red"
@@ -215,13 +200,13 @@ define colias position
   # center of rotation
   origin [ 0.0 0.0 0.0 0.0 ]
   gui_nose 1
-  obstacle_return 1 
+  obstacle_return 0 
   mass 0.028 # kilogram
-  # ranger_return 1.0 # to distinguish robots from obstacles
+  ranger_return 1.0 # to distinguish robots from obstacles
   fiducial_key 2  # can detect other robots
 
   localization "odom"  # to detect its position 
-  odom_error [ 0.03 0.03 0.00 0.05 ]
+  # odom_error [ 0.002 0.002 0.00 0.05 ]
 
   # plugins defined above
   colias_bottom_board( pose [ 0.0 0.0 0.012 0.0 ] )
