@@ -17,7 +17,8 @@ Swarm::~Swarm(){}
 void Swarm::Test(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		it != robots_vector_.end(); ++it){
-		(*it)->SetVelocity(0.1, 0.1);
+		Vector2d vec(0.1, 0.1);
+		(*it)->SetAbsoluteVelocity(vec);
 		// (*it)->PrintInterfaces();
 	}
 }

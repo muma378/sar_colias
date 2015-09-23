@@ -11,6 +11,7 @@ define survivor model
 
   obstacle_return 1
   gripper_return 0
+  ranger_return 0
   fiducial_return 101
   fiducial_key 3
 
@@ -42,7 +43,7 @@ define obstacle model
 
   obstacle_return 1
   gripper_return 0
-  ranger_return 2
+  ranger_return 0
   fiducial_return 100 
   fiducial_key 3
 )

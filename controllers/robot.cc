@@ -41,14 +41,34 @@ int Robot::get_fitness(){
 	return fitness_;
 }
 
+// the velocity is relative to the standard coordinate system
+void Robot::SetAbsoluteVelocity(const Vector2d& absolute_velocity){
+	last_velocity_ = absolute_velocity;
+	// translate standard to local
+	Pose local_pose = GetCurrentPose();
+	Pose standard_pose(absolute_velocity);
+	local_pose = standard_pose.TranslateToCoordinate(local_pose);
+	SetVelocity(local_pose);
+}
+
+// the velocity is relative to current coordinate system
+void Robot::SetRelativeVelocity(const Vector2d& relative_velocity){
+	SetVelocity(relative_velocity);
+	// translate local to standard
+	Pose standard_pose(0, 0, 0);
+	Pose local_pose(relative_velocity, engine_.GetYaw());
+	last_velocity_ = local_pose.TranslateToCoordinate(standard_pose);
+}
+
+// low-level method, shouldn't be called by other methods
+// the parameter velocity is relative to local current coordinate system
 void Robot::SetVelocity(const Vector2d& velocity){
-	last_velocity_ = velocity;
-	cout << velocity;
 	double forward_speed = 0;
 	double turn_speed = 0;
 	double radians = velocity.Radian();
 	if (abs(radians)<=SMALL_RADIAN_ERROR) {
-		forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
+		// forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
+		forward_speed = 0.25;
 	} else {
 		// make sure turns in the max speed but won't be over-tuned
 		turn_speed = radians/UPDATE_INTERVAL*1000;
@@ -56,11 +76,6 @@ void Robot::SetVelocity(const Vector2d& velocity){
 					  :turn_speed;
 	}
 	SetSpeed(forward_speed, turn_speed);
-}
-
-void Robot::SetVelocity(double x, double y){
-	Vector2d vec(x, y);
-	SetVelocity(vec);
 }
 
 // TODO: fitness shall be effected by many other factors
@@ -86,30 +101,39 @@ int Robot::Gating(int actual){
 void Robot::Run(Pose& velocity){
 	// velocity is affected by group, history and obstacles
 	// only one robot in the group
-	if (id_==1)
-		cout << "move to: ";
 	if (velocity.IsAtOrigin()){
 		// and there was a fitness higher than current one
-		if (fitness_>history_memory_.GetMaxFitness()){
-			Vector2d vec = GetCurrentPlace() - 
-					   	   *(history_memory_.GetPlaceWithMaxFitness());
+		if (fitness_ < history_memory_.GetMaxFitness()){
+			Vector2d vec = *(history_memory_.GetPlaceWithMaxFitness()) - 
+						   GetCurrentPlace();
+			// fitness is less than the last place
+			if (fitness_ < history_memory_.back()->get_fitness())
+				vec += RandomUnitVelocity()*10;
+			else 
+				vec += RandomUnitVelocity();
 			if (id_==1)
-				cout << "strategy 4 " << vec << endl;
-			SetVelocity(vec);
+				cout << "strategy 4 move to" << vec << endl;
+			SetAbsoluteVelocity(vec);
 		} else {
 			if (id_==1)
-				cout << "strategy 3 " << endl;
-			// else keep the previous velocity
-			SetVelocity(last_velocity_);
+				cout << "strategy 3 move to" << last_velocity_ << endl;
+			// keeps the previous velocity
+			SetAbsoluteVelocity(last_velocity_);
 		}
 	} else {
 		if (id_==1)
-			cout << velocity << endl;
-		SetVelocity(velocity);
+			cout << "move to " << velocity << endl;
+		// velocity += RandomUnitVelocity();
+		SetRelativeVelocity(RandomUnitVelocity()+velocity);
 	}
 	// SetSpeed(0.25, 0);
 	VoidObstacles();
 	SaveCurrentPlace();
+}
+
+Vector2d Robot::RandomUnitVelocity(){
+	Vector2d random_vector(random()%100, random()%100);
+	return random_vector.Normalize()*0.1;
 }
 
 // TODO: robot reflects when detecting obstacles
@@ -124,50 +148,39 @@ void Robot::VoidObstacles(){
 		SetSpeed(forward_speed, turn_speed);
 		return;
 	}
-	double obstacle_bearing = GetObstacleBearing();
-	if (abs(obstacle_bearing)==PI){
-		return;
+	Vector2d obstacle_bearing = GetObstacleBearing();
+	if (obstacle_bearing.IsAtOrigin()){
+		return;	// no obstocles detected
+	} else {
+		double obstacle_yaw = obstacle_bearing.Radian();
+		Vector2d velocity;
+		// obstocles detcted locate behind
+		if (abs(obstacle_yaw) >= PI/2){ 
+			velocity.x_ = 0.15;
+		}
+		// heading obstacle
+		if (abs(obstacle_yaw)>0 && abs(obstacle_yaw)<PI/2){	// will hit in the future
+			velocity.y_ = -obstacle_bearing.y_;
+			// TODO:to add x
+		}
+		// facing obstacle
+		if (obstacle_yaw==0){	
+			velocity.y_ = (rand()%2)==0?1:-1;
+		}
+		SetRelativeVelocity(velocity);
 	}
-	if (abs(obstacle_bearing)>=PI/2){
-		forward_speed = 0.15;
-	}
-	if (abs(obstacle_bearing)>0 && abs(obstacle_bearing)<PI/2){	// will hit in the future
-		turn_speed = -obstacle_bearing;
-	}
-	if (obstacle_bearing==0){	// heading obstacle
-		int direction = (rand()%2)==0?1:-1;
-		turn_speed = direction*PI/2;
-	}
-	SetSpeed(forward_speed, turn_speed);
-
 }
 
 // get the bearing of obstacle with data read from all irs
-double Robot::GetObstacleBearing(){
-	double y = 0;
-	double x = 0;
+Vector2d Robot::GetObstacleBearing(){
+	Vector2d obstacle_bearing;
 	for (int i = 0; i < GetIRRangerCount(); ++i){	// only use the front ir rangers
 		double intensity = GetIRRangerIntensity(i);
 		// cout << intensity << "-" ;
-		y += intensity * sin_radians_between_irs_[i];
-		x += intensity * cos_radians_between_irs_[i];
+		obstacle_bearing.x_ += intensity * cos_radians_between_irs_[i];
+		obstacle_bearing.y_ += intensity * sin_radians_between_irs_[i];
 	}
-	
-	double obstacle_bearing = atan(y/x);
-	if (x==0 && y==0){	// no obstacles detected
-		obstacle_bearing = PI;
-	}
-	if (x<0 && y<0){	// locates at south-east
-		// obstacle_bearing = atan(y/x)-PI;
-		obstacle_bearing -= PI;
-	}
-	if (x<0 && y>0){	// locates at south-west
-		// obstacle_bearing = PI+atan(y/x);
-		obstacle_bearing += PI;
-	}
-	// cout << "robot " << id_ << " found a obstacle at" << obstacle_bearing << endl;
 	return obstacle_bearing;
-
 }
 
 int Robot::GetIRRangerCount(){
@@ -200,7 +213,6 @@ int Robot::GetNeighboursCount(){
 int Robot::GetNeighbourId(int neighbours_index){
 	return robot_detector_.GetFiducialItem(neighbours_index).id;
 }
-
 
 Pose* Robot::GetNeighbourPose(int neighbours_index){
 	// TestPoseClass(neighbours_index);
@@ -267,7 +279,7 @@ void Robot::SaveCurrentPlace(){
 	history_memory_.Save( new Place(x, y, fitness_) );
 	if (id_==1){
 		Place* place = new Place(x, y, fitness_);
-		cout << "Robot " << id_ << " : " << *place << endl;
+		cout << "Robot " << id_ << "'s current place is " << *place << endl;
 	}
 }
 
@@ -278,7 +290,7 @@ Place Robot::GetCurrentPlace(){
 
 Pose Robot::GetCurrentPose(){
 	// as the origin of a coordinate system
-	Pose pose(0, 0, 0);
+	Pose pose(0, 0, engine_.GetYaw());
 	return pose;
 }
 
@@ -391,8 +403,8 @@ inline Pose Group::VelocityDepartCenter(Robot& robot){
 }
 
 inline Pose Group::VelocityAsFitnessGradient(Robot& robot){
-	cout << "center :" << GetCenter(robot);
-	cout << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
+	// cout << "center :" << GetCenter(robot);
+	// cout << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
 	return GetCenterWithMaxFitness(robot) - GetCenter(robot);
 }
 
@@ -403,7 +415,7 @@ Pose Group::GetCenter(Robot& robot){
 		return center_;
 	}else{
 		// translate the coordinate system of the center_ to the robot's
-		return center_.TranslateCoordinate(
+		return center_.TranslateToCoordinate(
 			*(robot.GetNeighbourPose(*fiducial_robot_)));
 	}
 }
@@ -413,7 +425,7 @@ Pose Group::GetCenterWithMaxFitness(Robot& robot){
 		return center_with_max_fitness_;
 	}else{
 		// translate the coordinate system of the center_ to the robot's
-		return center_with_max_fitness_.TranslateCoordinate(
+		return center_with_max_fitness_.TranslateToCoordinate(
 			*(robot.GetNeighbourPose(*fiducial_robot_)));
 	}
 }
@@ -439,6 +451,6 @@ void Group::ClearBitset(){
 void Group::TestTranslateCoordinate(){
 	Pose current_pose(-1, -1, 0);
 	Pose relative_pose(0, 2, PI/4);
-	cout << "test tanslated coordinate: " << current_pose.TranslateCoordinate(relative_pose) << endl;
+	cout << "test tanslated coordinate: " << current_pose.TranslateToCoordinate(relative_pose) << endl;
 
 }

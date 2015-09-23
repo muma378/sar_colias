@@ -18,21 +18,21 @@ public:
     Robot(PlayerClient* client, int index);
     ~Robot();
     void Run(Pose& velocity);
+    Vector2d RandomUnitVelocity();
+    void SetAbsoluteVelocity(const Vector2d& absolute_velocity);
+	void SetRelativeVelocity(const Vector2d& relative_velocity);
     void VoidObstacles();
     void UpdateFitness();
     int Gating(int actual);
     int GetSourceIntensity();
     int GenerateFitness(Pose* pose); 
-    void SetVelocity(const Vector2d& velocity);
-    void SetVelocity(double x, double y);
-    double GetObstacleBearing();
+    Vector2d GetObstacleBearing();
 	bool InBumperRange();
 	// bool GotStuckIn();
 	// bool SystemCrashed();
 	void SaveCurrentPlace();
 	double GetIRRangerIntensity(int ranger_index);
  	int GetIRRangerCount();
-
     int GetNeighboursCount();
     // neighbours_index counted from 0 to GetNeighboursCount()-1
     int GetNeighbourId(int neighbours_index);
@@ -69,6 +69,9 @@ private:
     const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
     const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
     const double cos_radians_between_irs_ [6] = { 0.5, 1, 0.5, -0.5, -1, -0.5 };
+
+    void SetVelocity(const Vector2d& velocity);
+
 };
 
 // Robots with its neighbours form a group

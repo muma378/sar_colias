@@ -13,14 +13,16 @@
 class Vector2d
 {
 public:
-	Vector2d();
-	Vector2d(double x, double y);
-	~Vector2d();
+	Vector2d() : x_(0), y_(0){};
+	Vector2d(double x, double y) : x_(x), y_(y){};
+	Vector2d(const Vector2d& obj){ x_=obj.x_; y_=obj.y_; }
 	double x_;
 	double y_;
 
-	Vector2d operator+(const Vector2d& vec2d);
-	Vector2d operator/(const int divisor);
+	Vector2d operator+(const Vector2d& vec2d) const;
+	Vector2d operator/(const int divisor) const;
+	Vector2d operator*(const int multiplier) const;
+	Vector2d& operator+=(const Vector2d& vec2d);
 	double& operator[](int i);
 
 	friend ostream& operator<<(ostream& out, const Vector2d& vec){
@@ -28,17 +30,18 @@ public:
 	    return out;
 	}
 	double Magnitude() const{ return sqrt(x_*x_+y_*y_); }
+	Vector2d Normalize() const{ return *this/this->Magnitude(); }
 	double Radian() const;
+	bool IsAtOrigin() const{ return x_==0&&y_==0; }
 };
 
 class Place: public Vector2d
 {
 public:
 	Place() : Vector2d(), fitness_(0){};
-	Place(double x, double y);
-	Place(double x, double y, int fitness);
+	Place(double x, double y) : Vector2d(x, y), fitness_(0){};
+	Place(double x, double y, int f) : Vector2d(x, y), fitness_(f){};
 	Place(const Place& obj);
-	~Place(){}
 
 	Place operator+(const Place& place);
 	Place operator-(const Place& place);
@@ -65,12 +68,14 @@ private:
 class Pose: public Vector2d
 {
 public:
-	Pose() : Vector2d(), yaw_(0){}
+	Pose() : Vector2d(), yaw_(0){};
+	Pose(const Vector2d& vec) : Vector2d(vec), yaw_(0){}
+	Pose(const Vector2d& vec, double yaw) : Vector2d(vec), yaw_(yaw){}
 	Pose(double x, double y) : Vector2d(x, y), yaw_(0){};
 	Pose(double x, double y, double yaw) : Vector2d(x, y), yaw_(yaw){};
 	Pose(player_pose3d_t player_pose)
 		: Vector2d(player_pose.px, player_pose.py),
-		  yaw_(player_pose.pyaw){};
+		  yaw_(player_pose.pyaw){}
 	double yaw_;
 	
 	Pose operator+(const Pose& pose);
@@ -86,10 +91,11 @@ public:
 	}
 
 	void Clear(){ x_ = y_ = yaw_ = 0; }
-	Pose TranslateCoordinate(Pose& relative_pose);
-	bool IsAtOrigin(){ return x_==0&&y_==0; }
+	Pose TranslateToCoordinate(Pose& relative_pose);
+	
 	using Vector2d::Magnitude;
 	using Vector2d::Radian;
+	using Vector2d::IsAtOrigin;
 
 };
 
@@ -108,6 +114,7 @@ public:
 	~HistoryMemory();
 
 	Place*& operator[](const int i);
+	Place*& back(){ return places_history_deque_.back(); };
 	void Save(Place* place);
 	void RenewCenter();
 	int EstimateFitness();

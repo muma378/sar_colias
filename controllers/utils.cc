@@ -10,24 +10,30 @@
  * Vector2d Class
  * Base class.
 */
-Vector2d::Vector2d() : x_(0), y_(0){}
-
-Vector2d::Vector2d(double x, double y) : x_(x), y_(y){}
-
-Vector2d::~Vector2d(){}
-
-Vector2d Vector2d::operator+(const Vector2d& vec2d){
+Vector2d Vector2d::operator+(const Vector2d& vec2d) const{
 	Vector2d vec2d_sum;
 	vec2d_sum.x_ = this->x_ + vec2d.x_;
 	vec2d_sum.y_ = this->y_ + vec2d.y_;
 	return vec2d_sum;
 }	
 
-Vector2d Vector2d::operator/(const int divisor){
+Vector2d Vector2d::operator/(const int divisor) const{
 	Vector2d vec2d_avg;
 	vec2d_avg.x_ = this->x_/divisor;
 	vec2d_avg.y_ = this->y_/divisor;
 	return vec2d_avg;
+}
+
+Vector2d Vector2d::operator*(const int multiplier) const{
+	Vector2d vec2d_mul;
+	vec2d_mul.x_ = this->x_ * multiplier;
+	vec2d_mul.y_ = this->y_ * multiplier;
+	return vec2d_mul;
+}
+
+Vector2d& Vector2d::operator+=(const Vector2d& vec2d){
+	*this = *this + vec2d;
+	return *this;
 }
 
 double& Vector2d::operator[](int i){
@@ -52,14 +58,6 @@ double Vector2d::Radian() const{
  * Place Class
  * Saves coordinate and fitness.
 */
-Place::Place(double x, double y) : Vector2d(x, y), fitness_(0){
-}
-
-Place::Place(double x, double y, int fitness)
-	: Vector2d(x, y),
-	  fitness_(fitness){
-}
-
 Place::Place(const Place& obj){
 	x_ = obj.x_;
 	y_ = obj.y_;
@@ -117,7 +115,6 @@ bool Place::operator==(const Place& place) const{
  * Pose Class
  * Saves coordinate and yaw.
 */
-
 Pose Pose::operator+(const Pose& pose){
 	Pose pose_sum(*this);
 	pose_sum.x_ = this->x_ + pose.x_;
@@ -160,8 +157,8 @@ void Pose::operator=(const Pose& pose){
 	this->yaw_ = pose.yaw_;
 }
 
-// translate current coordinate to the corrdinate system that relative_pose within
-Pose Pose::TranslateCoordinate(Pose& relative_pose){
+// translate current(this) coordinate to the corrdinate system that relative_pose within
+Pose Pose::TranslateToCoordinate(Pose& relative_pose){
 	if (this->IsAtOrigin()){
 		return relative_pose;
 	} else {
