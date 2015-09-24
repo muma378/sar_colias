@@ -6,7 +6,7 @@
 # Date: 17 September 2015
 
 if [ -z "$1" ]; then
-	if [[ -e 'sar.cfg' ]]; then
+	if [[ -e 'sar.cfg' && -e 'targets/survivor_cfg.inc' ]]; then
 		player sar.cfg &
 		# cd ./controllers
 		# make clean
@@ -14,16 +14,17 @@ if [ -z "$1" ]; then
 		# ./sar_colias
 		exit
 	fi
-    echo usage: $0 robots_count [x_size*y_size]
+    echo usage: $0 robots_count survivors_count [x_size*y_size]
     exit
 fi
 
 ROBOTS_COUNT=$1
+SURVIVORS_COUNT=$2
 
 X_SIZE=8	# default size of map
 Y_SIZE=8
 
-if [ ! -z "$2" ]; then
+if [ ! -z "$3" ]; then
 	X_SIZE=${2%*\*}
 	Y_SIZE=${2#*\*}
 fi
@@ -87,6 +88,19 @@ local DRIVES_DECLARE='driver(
 }
 
 
+function output_survivors_config {
+local HEADER_DECLARE='include "../targets/survivor.inc"\n'
+
+local SURVIVORS_DECLARE='survivor(name "survivor%d" pose [ %.2f %.2f 0.0 %d ] fiducial_return %d)\n'
+	
+	printf "$HEADER_DECLARE"
+	for i in `seq 1 $SURVIVORS_COUNT`; do
+    	random_pose_generator
+    	printf "$SURVIVORS_DECLARE" $i $x_pose $y_pose $angle $((i+100))
+    done
+
+}
+
 # given the first parameter as output function
 # the second as file path
 function generate_config {
@@ -99,6 +113,7 @@ function generate_config {
 }
 
 generate_config output_robots_config 'robots/sim_colias.inc'
+generate_config output_survivors_config 'targets/survivors_cfg.inc'
 generate_config output_drives_config './sar.cfg'
 player sar.cfg &
 

@@ -32,7 +32,8 @@ public:
 	double Magnitude() const{ return sqrt(x_*x_+y_*y_); }
 	Vector2d Normalize() const{ return *this/this->Magnitude(); }
 	double Radian() const;
-	bool IsAtOrigin() const{ return x_==0&&y_==0; }
+	bool IsAtOrigin() const{ return x_==0&&y_==0; };
+	void Random() { x_=rand()%100+1; y_=rand()%100+1; };
 };
 
 class Place: public Vector2d

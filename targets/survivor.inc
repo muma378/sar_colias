@@ -5,22 +5,6 @@
 # the model of survivor, can be detected as fiducial
 define survivor model
 (
-  color "DarkBlue"
-  size [ 0.1 0.1 0.1 ]
-  # bitmap "../maps/bitmaps/human_outline.png"
-
-  obstacle_return 1
-  gripper_return 0
-  ranger_return 0
-  fiducial_return 101
-  fiducial_key 3
-
-)
-
-# noise to increase the effort to find targets
-# can be detected as fiducial, but will return 0
-define obstacle model
-(
   color "cyan"
   size [ 0.05 0.05 0.1]
 
@@ -44,6 +28,23 @@ define obstacle model
   obstacle_return 1
   gripper_return 0
   ranger_return 0
-  fiducial_return 100 
+  # count from 101
+  # fiducial_return 100 
   fiducial_key 3
+)
+
+# noise to increase the effort to find targets
+# can be detected as fiducial, but will return 0
+define obstacle model
+(
+  color "DarkBlue"
+  size [ 0.1 0.1 0.1 ]
+  # bitmap "../maps/bitmaps/human_outline.png"
+
+  obstacle_return 1
+  gripper_return 0
+  ranger_return 0
+  fiducial_return 101
+  fiducial_key 3
+
 )

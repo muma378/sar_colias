@@ -44,8 +44,12 @@ double& Vector2d::operator[](int i){
 	throw out_of_range("Index beyonds 1 ");
 }
 
+// remember to call IsAtOrigin() before Radian()
 // the radians to postive x-axis
 double Vector2d::Radian() const{
+	if (this->IsAtOrigin()){
+		cout << "Incorrect calling atan " << endl;
+	}
 	double radian = atan(y_/x_);
 	if (x_<0&&y_>0)
 		radian += PI;
@@ -157,7 +161,32 @@ void Pose::operator=(const Pose& pose){
 	this->yaw_ = pose.yaw_;
 }
 
-// translate current(this) coordinate to the corrdinate system that relative_pose within
+/*
+ * Kernel method for translating coordinate between different systems.
+ * Standard coordinate system is the system we usually use in math. Its postive 
+ * x-axis is always at left and potive y-axis is always at upon. 
+ * Contrast to the standard, in the local coordinate system, x-axis is used to 
+ * represent its head. Robots change their direction while moving, therefor, the
+ * local x-axis is not fixed. 
+ * 
+ * This method can be used to convert coordinates between standard system and 
+ * local system, or local systems. 
+ * In the method GetCenter() and GetCenterWithMaxFitness(), cause only the 
+ * center relative to the fiducial robot is reserved, therefore centers to other 
+ * robots which in the same group need to call this method to convert the 
+ * coordinate. 
+ * Meanwhile, in the method SetRelativeVelocity() and SetAbsoluteVelocity(), 
+ * on the one hand, we need to reserve the last velocity in standard format, on 
+ * the other hand, we need to specify the robot local velocity so that it knows
+ * where move to. Hence, this method is also the media to connect each others
+ *
+ * The object calling the method is the one to be converted, while the object 
+ * which as a parameter is the target translate to. Remember, the target pose
+ * (relative_pose) provides the value yaw_ relative to converted pose, and the
+ * converted pose provides coordinate relative current system (no matter local 
+ * or standard one).
+ *
+*/
 Pose Pose::TranslateToCoordinate(Pose& relative_pose){
 	if (this->IsAtOrigin()){
 		return relative_pose;

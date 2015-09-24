@@ -6,6 +6,8 @@
 
 #include "swarm.h"
 
+ofstream outfile;
+
 Swarm::Swarm(PlayerClient* client) : group_actual_size_(0){
     srand(time(NULL));
     for (int i = 0; i < ROBOTS_COUNT; ++i)
@@ -17,8 +19,8 @@ Swarm::~Swarm(){}
 void Swarm::Test(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		it != robots_vector_.end(); ++it){
-		Vector2d vec(0.1, 0.1);
-		(*it)->SetAbsoluteVelocity(vec);
+		Vector2d vec(0.35, 0);
+		(*it)->SetRelativeVelocity(vec);
 		// (*it)->PrintInterfaces();
 	}
 }
@@ -46,10 +48,17 @@ void Swarm::UpdateVelocities(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin();
 		 it != robots_vector_.end(); ++it){
 		// cout << "Robot " << (*it)->id_ << " uses ";
-		belonging_group = groups_vector_[(*it)->get_group_index()];
-		Pose velocity = belonging_group->WeightGroupVelocity(**it);
-		// Pose velocity;	//  TO COMMENT
-		(*it)->Run(velocity);
+		if (true){
+			belonging_group = groups_vector_[(*it)->get_group_index()];
+			if(belonging_group->get_group_size() > 1){
+				Pose velocity = belonging_group->WeightGroupVelocity(**it);	
+				(*it)->Run(velocity);
+			} else {
+				(*it)->Run();
+			}
+		} else {
+			(*it)->Continue();
+		}
 	}
 	return;
 }
@@ -167,13 +176,28 @@ void Swarm::CalculateCenter(){
 	}
 }
 
+void TestTranslateToStandard(){
+	Pose forward_velocity(1, 0, 0);
+	Pose standard_pose(0, 0, PI/4);
+	// should be (0.707, 0.707, PI/4)
+	cout << "Translated standard coordinate is" ;
+	cout << forward_velocity.TranslateToCoordinate(standard_pose) << endl;
+}
+
+void TestTranslateToLocal(){
+	Pose standard_pose(1, 1, 0);
+	Pose local_pose(0, 0, -PI/4);
+	// should be (1.414, 0, 0);
+	cout << "Translated local coordinate is" ;
+	cout << standard_pose.TranslateToCoordinate(local_pose) << endl;
+
+}
 
 int main(int argc, char const *argv[])
 {	
 	PlayerClient client("localhost", 6665);
 	Swarm swarm(&client);
-
-  	swarm.Test();
+	outfile.open("robots.log");
   	while(true){
   		client.Read();
   		swarm.DetectSignals();
@@ -181,6 +205,7 @@ int main(int argc, char const *argv[])
 		swarm.UpdateVelocities();
 		swarm.CollectTargets();
   		usleep(UPDATE_INTERVAL);
+  		// sleep(1);
   	}
 
 	return 0;

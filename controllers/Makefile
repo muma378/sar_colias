@@ -22,4 +22,4 @@ utils.o: utils.cc utils.h
 	$(CC) $(CFLAGS) utils.cc
 
 clean:
-	rm -f *.o *.c~ *.h~ simple
+	rm -f *.o *.c~ *.h~ *.log sar_colias

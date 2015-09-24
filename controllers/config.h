@@ -12,21 +12,22 @@
 #include <unistd.h>
 #include <iostream>
 #include <math.h>
+#include <fstream>
 #include <libplayerc++/playerc++.h>
 
 using namespace std;
 using namespace PlayerCc;
 
-#define ROBOTS_COUNT 5 	// the amount of robots
+#define ROBOTS_COUNT 20 	// the amount of robots
 #define F_MAX 100	// max value of fitness
 #define F_MIN 0
-#define UPDATE_INTERVAL 500  // millisecond
+#define UPDATE_INTERVAL 300  // millisecond
 #define MAX_SPEED 0.35	// m/s
 #define PI 3.1415926
 // the boundary of trun speed is PI/2
 #define MAX_TURN_SPEED 7	// radians/s
 #define TURN_SPEED_BOUND (PI/2)
-#define SMALL_RADIAN_ERROR 0.18		// 5 degree
+#define SMALL_RADIAN_ERROR 0.09		// 5 degree
 #define COMMUNICATE_RANGE 1  // m, range_max robot_detector possesses
 #define ACCELATOR 1  // avoid the forward speed keeping so small
 #define DETECT_SOURCE_RANGE 1.5  // the distance that source can be detected
@@ -42,5 +43,8 @@ using namespace PlayerCc;
 #define DISTANCE_ERROR 0.001  // seen as stationary if the distance robots move less than it
 #define DISTANCE(x, y) (sqrt(x*x+y*y)) 
 
-#define GROUP_SIZE 5
+#define GROUP_SIZE 4
+
+extern ofstream outfile;
+
 #endif

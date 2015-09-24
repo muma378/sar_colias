@@ -18,6 +18,8 @@ Robot::Robot(PlayerClient* client, int index)
 	  source_detector_(client, 2*index+1){
 	// assign fitness a random negative number
 	fitness_ = int( - ( rand() % F_MAX ));
+	last_velocity_.Random();
+	status = Status::ROTATE;
 }
 
 void Robot::PrintInterfaces(){
@@ -46,6 +48,8 @@ void Robot::SetAbsoluteVelocity(const Vector2d& absolute_velocity){
 	last_velocity_ = absolute_velocity;
 	// translate standard to local
 	Pose local_pose = GetCurrentPose();
+	// if(id_==1)
+		outfile << "local pose is :" << local_pose << endl;
 	Pose standard_pose(absolute_velocity);
 	local_pose = standard_pose.TranslateToCoordinate(local_pose);
 	SetVelocity(local_pose);
@@ -53,11 +57,11 @@ void Robot::SetAbsoluteVelocity(const Vector2d& absolute_velocity){
 
 // the velocity is relative to current coordinate system
 void Robot::SetRelativeVelocity(const Vector2d& relative_velocity){
-	SetVelocity(relative_velocity);
 	// translate local to standard
-	Pose standard_pose(0, 0, 0);
-	Pose local_pose(relative_velocity, engine_.GetYaw());
+	Pose standard_pose(0, 0, engine_.GetYaw());
+	Pose local_pose(relative_velocity);
 	last_velocity_ = local_pose.TranslateToCoordinate(standard_pose);
+	SetVelocity(relative_velocity);
 }
 
 // low-level method, shouldn't be called by other methods
@@ -65,16 +69,28 @@ void Robot::SetRelativeVelocity(const Vector2d& relative_velocity){
 void Robot::SetVelocity(const Vector2d& velocity){
 	double forward_speed = 0;
 	double turn_speed = 0;
-	double radians = velocity.Radian();
-	if (abs(radians)<=SMALL_RADIAN_ERROR) {
-		// forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
-		forward_speed = 0.25;
-	} else {
-		// make sure turns in the max speed but won't be over-tuned
-		turn_speed = radians/UPDATE_INTERVAL*1000;
-		turn_speed = abs(turn_speed)>TURN_SPEED_BOUND?TURN_SPEED_BOUND\
-					  :turn_speed;
+	if (!velocity.IsAtOrigin()){
+		double radians = velocity.Radian();
+		// if (id_==1){
+			outfile << "Robot " << id_ << " rotate radians : " << radians << endl;
+			outfile << "relative_velocity is " << velocity << endl;
+			outfile << "absolute_velocity is " << last_velocity_ << endl;
+		// }
+		if (abs(radians)<=SMALL_RADIAN_ERROR) {
+			// forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
+			forward_speed = 0.25;
+			status = Status::MOVING;
+		} else {
+			// make sure turns in the max speed but won't be over-tuned
+			turn_speed = radians/(UPDATE_INTERVAL-100)*1000;
+			turn_speed = abs(turn_speed)<TURN_SPEED_BOUND?turn_speed\
+						  :turn_speed/abs(turn_speed)*TURN_SPEED_BOUND;
+			// turn_speed = SMALL_RADIAN_ERROR*2*1000/UPDATE_INTERVAL;
+			status = Status::ROTATE;
+		}
 	}
+	// if (id_==1)
+		outfile << "turn speed : " << turn_speed << endl;
 	SetSpeed(forward_speed, turn_speed);
 }
 
@@ -95,44 +111,48 @@ int Robot::Gating(int actual){
 	}else{
 		return actual;
 	}
-
 }
 
-void Robot::Run(Pose& velocity){
-	// velocity is affected by group, history and obstacles
-	// only one robot in the group
-	if (velocity.IsAtOrigin()){
-		// and there was a fitness higher than current one
-		if (fitness_ < history_memory_.GetMaxFitness()){
-			Vector2d vec = *(history_memory_.GetPlaceWithMaxFitness()) - 
-						   GetCurrentPlace();
-			// fitness is less than the last place
-			if (fitness_ < history_memory_.back()->get_fitness())
-				vec += RandomUnitVelocity()*10;
-			else 
-				vec += RandomUnitVelocity();
-			if (id_==1)
-				cout << "strategy 4 move to" << vec << endl;
-			SetAbsoluteVelocity(vec);
-		} else {
-			if (id_==1)
-				cout << "strategy 3 move to" << last_velocity_ << endl;
-			// keeps the previous velocity
-			SetAbsoluteVelocity(last_velocity_);
-		}
+// only one robot in the group
+void Robot::Run(){
+	// there was a fitness higher than current one
+	if (fitness_ < history_memory_.GetMaxFitness()){
+		Vector2d vec = *(history_memory_.GetPlaceWithMaxFitness()) - 
+					   GetCurrentPlace();
+		// fitness is less than the last place
+		if (fitness_ < history_memory_.back()->get_fitness())
+			vec += RandomUnitVelocity()*10;
+		else 
+			vec += RandomUnitVelocity();
+		// if (id_==1)
+			outfile << "strategy 4 move to" << vec << endl;
+		SetAbsoluteVelocity(vec);
 	} else {
-		if (id_==1)
-			cout << "move to " << velocity << endl;
-		// velocity += RandomUnitVelocity();
-		SetRelativeVelocity(RandomUnitVelocity()+velocity);
+		// if (id_==1)
+			outfile << "strategy 3 move to" << last_velocity_ << endl;
+		// no one higher than it, keeps the previous velocity
+		SetAbsoluteVelocity(last_velocity_);
 	}
-	// SetSpeed(0.25, 0);
 	VoidObstacles();
 	SaveCurrentPlace();
 }
 
+// robots' velocities are afftected by each others
+void Robot::Run(Pose& velocity){
+	// velocity += RandomUnitVelocity();
+	SetRelativeVelocity(RandomUnitVelocity()+velocity);
+	VoidObstacles();
+	SaveCurrentPlace();
+}
+
+// there won't come new move command before the status became moving
+void Robot::Continue(){
+	SetAbsoluteVelocity(last_velocity_);
+}
+
 Vector2d Robot::RandomUnitVelocity(){
-	Vector2d random_vector(random()%100, random()%100);
+	Vector2d random_vector;
+	random_vector.Random();
 	return random_vector.Normalize()*0.1;
 }
 
@@ -149,9 +169,7 @@ void Robot::VoidObstacles(){
 		return;
 	}
 	Vector2d obstacle_bearing = GetObstacleBearing();
-	if (obstacle_bearing.IsAtOrigin()){
-		return;	// no obstocles detected
-	} else {
+	if (!obstacle_bearing.IsAtOrigin()){	//obstocles detected
 		double obstacle_yaw = obstacle_bearing.Radian();
 		Vector2d velocity;
 		// obstocles detcted locate behind
@@ -169,6 +187,7 @@ void Robot::VoidObstacles(){
 		}
 		SetRelativeVelocity(velocity);
 	}
+	return;
 }
 
 // get the bearing of obstacle with data read from all irs
@@ -277,10 +296,10 @@ void Robot::SaveCurrentPlace(){
 	double x = engine_.GetXPos();
 	double y = engine_.GetYPos();
 	history_memory_.Save( new Place(x, y, fitness_) );
-	if (id_==1){
+	// if (id_==1){
 		Place* place = new Place(x, y, fitness_);
-		cout << "Robot " << id_ << "'s current place is " << *place << endl;
-	}
+		outfile << "Robot " << id_ << "'s current place is " << *place << endl;
+	// }
 }
 
 Place Robot::GetCurrentPlace(){
@@ -290,7 +309,7 @@ Place Robot::GetCurrentPlace(){
 
 Pose Robot::GetCurrentPose(){
 	// as the origin of a coordinate system
-	Pose pose(0, 0, engine_.GetYaw());
+	Pose pose(0, 0, -engine_.GetYaw());
 	return pose;
 }
 
@@ -346,11 +365,12 @@ void Group::JoinGroup(const int robot_id){
 // calculates the center and fittest center
 void Group::Update(int* fitness_array){
 	Pose* pose;
-	// it is also the coordinate of the fiducial robot
+	// it is origin, and also is the coordinate of the fiducial robot
 	center_.Clear();
 	center_with_max_fitness_.Clear();
 	int max_fitness_ = fiducial_robot_->get_fitness();
 	int max_fitness_counter = 1;
+	group_size_ = fiducial_robot_->GetNeighboursCount() + 1;
 	for (int i = 0; i < group_size_-1 ; ++i){	// not includes itself
 		pose = fiducial_robot_->GetNeighbourPose(i);
 		center_ +=  *pose;
@@ -376,19 +396,19 @@ void Group::Update(int* fitness_array){
 Pose Group::WeightGroupVelocity(Robot& robot){
 	Pose velocity;
 	if (identical_fitness_ && group_size_>=2){
-		if (robot.id_==1)
-			cout << "strategy 1 ";
+		// if (robot.id_==1)
+			outfile << "strategy 1 ";
 		velocity = VelocityDepartCenter(robot);
 	}else{
 		if (group_size_>GROUP_SIZE){
-			if (robot.id_==1)
-				cout << "strategy 1+2 ";
+			// if (robot.id_==1)
+				outfile << "strategy 1+2 ";
 			velocity = VelocityDepartCenter(robot);
 			velocity += VelocityAsFitnessGradient(robot);
 		}
 		if (group_size_<=GROUP_SIZE && group_size_>=2){
-			if (robot.id_==1)
-				cout << "strategy 2 ";
+			// if (robot.id_==1)
+				outfile << "strategy 2 ";
 			velocity = VelocityAsFitnessGradient(robot);
 		}
 	}
@@ -399,12 +419,12 @@ Pose Group::WeightGroupVelocity(Robot& robot){
 
 inline Pose Group::VelocityDepartCenter(Robot& robot){
 	Pose origin;
-	return origin-GetCenter(robot);
+	return origin -  GetCenter(robot);
 }
 
 inline Pose Group::VelocityAsFitnessGradient(Robot& robot){
-	// cout << "center :" << GetCenter(robot);
-	// cout << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
+	outfile << "center :" << GetCenter(robot);
+	outfile << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
 	return GetCenterWithMaxFitness(robot) - GetCenter(robot);
 }
 

@@ -11,17 +11,23 @@
 #include "config.h"
 #include "utils.h"
 
+enum Status { ROTATE, MOVING };
+
 class Robot
 {
 public:
     const int id_;	// corresponds its fiducial return 
     Robot(PlayerClient* client, int index);
     ~Robot();
+    void Run();
     void Run(Pose& velocity);
     Vector2d RandomUnitVelocity();
     void SetAbsoluteVelocity(const Vector2d& absolute_velocity);
 	void SetRelativeVelocity(const Vector2d& relative_velocity);
     void VoidObstacles();
+    void Continue();
+    bool IsMoving(){ return status==Status::MOVING; };
+
     void UpdateFitness();
     int Gating(int actual);
     int GetSourceIntensity();
@@ -64,12 +70,12 @@ private:
     FiducialProxy robot_detector_;
     FiducialProxy source_detector_;
 
+    Status status;
     Vector2d last_velocity_;
     HistoryMemory history_memory_;
     const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
     const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
     const double cos_radians_between_irs_ [6] = { 0.5, 1, 0.5, -0.5, -1, -0.5 };
-
     void SetVelocity(const Vector2d& velocity);
 
 };
@@ -102,6 +108,7 @@ public:
 	Pose GetCenter(Robot& robot);
 	Pose GetCenterWithMaxFitness(Robot& robot);
 	
+	int get_group_size(){ return group_size_; };
 	int get_fiducial_robot_id(){ return fiducial_robot_id_; }
     void TestTranslateCoordinate();
 

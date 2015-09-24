@@ -3,7 +3,7 @@
 # Date: 8 September 2015
 
 include "map.inc"
-include "../targets/survivor.inc"
+include "../targets/survivors_cfg.inc"
 include "../robots/sim_colias.inc"
 
 # time to quit the simulation
@@ -14,6 +14,7 @@ paused 1
 # interval_real 100 # default
 interval_sim 100
 resolution 0.005
+threads 4
 
 #config the GUI window
 window
@@ -51,9 +52,10 @@ simpleMap
   pose [ 0 0 0 0 ]
 )
 
-obstacle
+survivor
 (
   name "survivor1"
   pose [ -0.80 -2.4 0.0 30 ]
 )
+
 
