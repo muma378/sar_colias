@@ -78,7 +78,8 @@ void Robot::SetVelocity(const Vector2d& velocity){
 		// }
 		if (abs(radians)<=SMALL_RADIAN_ERROR) {
 			// forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
-			forward_speed = 0.25;
+			forward_speed = MAX_SPEED;
+			moving_counter_ = 3;
 			status = Status::MOVING;
 		} else {
 			// make sure turns in the max speed but won't be over-tuned
@@ -86,7 +87,8 @@ void Robot::SetVelocity(const Vector2d& velocity){
 			turn_speed = abs(turn_speed)<TURN_SPEED_BOUND?turn_speed\
 						  :turn_speed/abs(turn_speed)*TURN_SPEED_BOUND;
 			// turn_speed = SMALL_RADIAN_ERROR*2*1000/UPDATE_INTERVAL;
-			status = Status::ROTATE;
+			if (--moving_counter_)
+				status = Status::ROTATE;
 		}
 	}
 	// if (id_==1)
@@ -164,7 +166,7 @@ void Robot::VoidObstacles(){
 	if (InBumperRange()){	//	random rotating untill not in the range
 		turn_speed = random()%10==0?PI/2:-PI/2;
 		// cout << "ROBOT " << id_ << " in bumper range! Rotate speed " << turn_speed << endl;
-		forward_speed = - 0.15;
+		forward_speed = -MIN_SPEED;
 		SetSpeed(forward_speed, turn_speed);
 		return;
 	}
@@ -174,7 +176,7 @@ void Robot::VoidObstacles(){
 		Vector2d velocity;
 		// obstocles detcted locate behind
 		if (abs(obstacle_yaw) >= PI/2){ 
-			velocity.x_ = 0.15;
+			velocity.x_ = MAX_SPEED;
 		}
 		// heading obstacle
 		if (abs(obstacle_yaw)>0 && abs(obstacle_yaw)<PI/2){	// will hit in the future
@@ -403,8 +405,8 @@ Pose Group::WeightGroupVelocity(Robot& robot){
 		if (group_size_>GROUP_SIZE){
 			// if (robot.id_==1)
 				outfile << "strategy 1+2 ";
-			velocity = VelocityDepartCenter(robot);
-			velocity += VelocityAsFitnessGradient(robot);
+			velocity = VelocityDepartCenter(robot)*DEPART_WEIGHT;
+			velocity += VelocityAsFitnessGradient(robot)*CONVERGE_WEIGHT;
 		}
 		if (group_size_<=GROUP_SIZE && group_size_>=2){
 			// if (robot.id_==1)

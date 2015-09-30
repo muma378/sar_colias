@@ -44,7 +44,7 @@ define obstacle model
   obstacle_return 1
   gripper_return 0
   ranger_return 0
-  fiducial_return 101
+  fiducial_return 200
   fiducial_key 3
 
 )

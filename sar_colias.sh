@@ -6,7 +6,7 @@
 # Date: 17 September 2015
 
 if [ -z "$1" ]; then
-	if [[ -e 'sar.cfg' && -e 'targets/survivor_cfg.inc' ]]; then
+	if [[ -e 'sar.cfg' && -e './targets/survivors_cfg.inc' ]]; then
 		player sar.cfg &
 		# cd ./controllers
 		# make clean

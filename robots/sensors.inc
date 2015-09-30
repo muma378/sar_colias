@@ -16,9 +16,9 @@ define robot_detector fiducial
   # 2 m with an accptable error rate
   # to simplify the question, we set the range as [0.0, 2.0]
   range_min 0.0 
-  range_max 1.0
+  range_max 0.5
   # the maximum range at which the sensor can detect the ID of a fiducial
-  range_max_id 1.0
+  range_max_id 0.5
   # feild of view is 360 degree
   fov 360
   # ignores the z component when checking a fiducial

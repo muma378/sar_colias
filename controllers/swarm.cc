@@ -48,7 +48,7 @@ void Swarm::UpdateVelocities(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin();
 		 it != robots_vector_.end(); ++it){
 		// cout << "Robot " << (*it)->id_ << " uses ";
-		if (true){
+		if ((*it)->IsMoving()){
 			belonging_group = groups_vector_[(*it)->get_group_index()];
 			if(belonging_group->get_group_size() > 1){
 				Pose velocity = belonging_group->WeightGroupVelocity(**it);	

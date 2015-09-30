@@ -70,12 +70,13 @@ private:
     FiducialProxy robot_detector_;
     FiducialProxy source_detector_;
 
-    Status status;
     Vector2d last_velocity_;
     HistoryMemory history_memory_;
     const double radians_between_irs_ [6] = { PI/3, 0, -PI/3, -PI*2/3, PI, PI*2/3 };
     const double sin_radians_between_irs_ [6] = { 0.866, 0, -0.866, -0.866, 0, 0.866 };
     const double cos_radians_between_irs_ [6] = { 0.5, 1, 0.5, -0.5, -1, -0.5 };
+    Status status;
+    int moving_counter_ = 0;
     void SetVelocity(const Vector2d& velocity);
 
 };

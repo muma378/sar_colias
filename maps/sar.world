@@ -52,10 +52,4 @@ simpleMap
   pose [ 0 0 0 0 ]
 )
 
-survivor
-(
-  name "survivor1"
-  pose [ -0.80 -2.4 0.0 30 ]
-)
-
 
