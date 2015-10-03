@@ -23,6 +23,7 @@ public:
 	void Grouping();
 	void UpdateVelocities();
 	void CollectTargets();
+	bool Complete();
 
 	// updates groups which hava at least one common element
 	void UpdateConnectedGroups();
@@ -39,14 +40,15 @@ public:
 	bool IsRobotInGroup(int robot_index){ return swarm_bitset_.test(robot_index); }
 	void PrintGroupsMembers();
 
-
 private:
 	vector<Robot*> robots_vector_;	// to record all robots
 	vector<Group*> groups_vector_;	// to record all groups
+	vector<Target*> targets_vector_;
 	// 0 stands for idle, 1 represents being grouped
 	bitset<ROBOTS_COUNT> swarm_bitset_;	
+	// SimulationProxy simulation_;
 	unsigned group_actual_size_;
-
 };
+
 
 #endif

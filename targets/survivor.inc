@@ -28,8 +28,7 @@ define survivor model
   obstacle_return 1
   gripper_return 0
   ranger_return 0
-  # count from 101
-  # fiducial_return 100 
+  # fiducial_return 100   # count from 101
   fiducial_key 3
 )
 

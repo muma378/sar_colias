@@ -28,6 +28,7 @@ public:
     void Continue();
     bool IsMoving(){ return status==Status::MOVING; };
 
+    int SeekTarget();
     void UpdateFitness();
     int Gating(int actual);
     int GetSourceIntensity();
@@ -47,6 +48,7 @@ public:
     Pose* GetNeighbourPoseError(int neighbours_index);
     player_fiducial_item_t GetNeighbour(int neighbours_index);
     Pose* GetSourcePose(int source_index);
+    int GetSourceId(int source_index);
 	Place GetCurrentPlace();
 	Pose GetCurrentPose();
 
@@ -64,6 +66,7 @@ public:
 private:
     int fitness_;
     int group_index_;
+    int found_target_id_;
     Position2dProxy engine_;
     RangerProxy bumper_;
     RangerProxy infrared_;
@@ -126,6 +129,31 @@ private:
 	int group_size_;
 	bool identical_fitness_;
 
+};
+
+
+class Target
+{
+public:
+	Target();
+	~Target();
+
+	static int target_size_;
+	static SimulationProxy* simulation_;
+	bool collected_;
+	bool detected_;
+	int robots_around_;
+
+	void Setup();
+	void Teardown();
+	void Detected();
+	void Collected();
+	int get_iterations(){ return iterations_in_rescue_; }
+
+private:
+	char* name_;
+	Pose pose_;
+	int iterations_in_rescue_;
 };
 
 #endif

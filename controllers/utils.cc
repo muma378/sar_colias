@@ -207,20 +207,18 @@ Pose Pose::TranslateToCoordinate(Pose& relative_pose){
  * Saves last memory_size data.
 */
 HistoryMemory::HistoryMemory()
-	: memory_size_(DEFAULT_MEMORY_SIZE){
-	place_with_max_fitness_ = new Place();
+	: memory_size_(DEFAULT_MEMORY_SIZE), 
+	  place_with_max_fitness_(NULL){
+
 }
 
 HistoryMemory::HistoryMemory(int memory_size)
-	: memory_size_(memory_size){
-	place_with_max_fitness_ = new Place();
+	: memory_size_(memory_size),
+	 place_with_max_fitness_(NULL){
 }
 
 HistoryMemory::~HistoryMemory(){
-	while(!places_history_deque_.empty()){
-		delete places_history_deque_.front();
-		places_history_deque_.pop_front();
-	}
+	Flush();
 }
 
 Place*& HistoryMemory::operator[](const int i){
@@ -279,11 +277,28 @@ int HistoryMemory::EstimateFitness(){
 }
 
 Place* HistoryMemory::GetPlaceWithMaxFitness(){
-	return place_with_max_fitness_;
+	if (place_with_max_fitness_){
+		return place_with_max_fitness_;
+	} else {
+		throw invalid_argument("does not point to anything");
+	}
 }
 
 int HistoryMemory::GetMaxFitness(){
-	return place_with_max_fitness_->get_fitness();
+	if (place_with_max_fitness_){
+		return place_with_max_fitness_->get_fitness();
+	} else {
+		return 0;
+	}
+}
+
+void HistoryMemory::Flush(){
+	while(!places_history_deque_.empty()){
+		delete places_history_deque_.front();
+		places_history_deque_.pop_front();
+	}
+	place_with_max_fitness_ = NULL;
+	return;
 }
 
 void HistoryMemory::CountStationaryTime(const Place* new_place){

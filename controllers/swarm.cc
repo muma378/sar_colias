@@ -6,12 +6,23 @@
 
 #include "swarm.h"
 
-ofstream outfile;
+ofstream logfile;
+ofstream csvfile;
+int iteration = 0;
+const string TARGET_CODE = "survivor";
+
+SimulationProxy* Target::simulation_;
+int Target::target_size_;
 
 Swarm::Swarm(PlayerClient* client) : group_actual_size_(0){
     srand(time(NULL));
     for (int i = 0; i < ROBOTS_COUNT; ++i)
-    	robots_vector_.push_back( new Robot(client, i) );
+    	robots_vector_.push_back(new Robot(client, i));
+    
+    Target::simulation_ = new SimulationProxy(client, 0);
+    Target::target_size_ = 0;
+    for (int i = 0; i < TARGETS_COUNT; ++i)
+    	targets_vector_.push_back(new Target());
 }
 
 Swarm::~Swarm(){}
@@ -35,9 +46,15 @@ void Swarm::PrintGroupsMembers(){
 }
 
 void Swarm::DetectSignals(){
+	for (int i = 0; i < TARGETS_COUNT; ++i){
+		targets_vector_[i]->Setup();
+	}
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		 it != robots_vector_.end(); ++it){
-		(*it)->UpdateFitness();
+		int target_found_ = (*it)->SeekTarget();
+		if (target_found_){		// not 0
+			targets_vector_[target_found_]->Detected();	// update parameters
+		}
 	}
 	return;
 }
@@ -64,7 +81,34 @@ void Swarm::UpdateVelocities(){
 }
 
 void Swarm::CollectTargets(){
+	for (int i = 0; i < TARGETS_COUNT; ++i){
+		targets_vector_[i]->Teardown();
+	}
 	return; 
+}
+
+
+bool Swarm::Complete(){
+	return Target::target_size_==0;
+}
+
+void Swarm::Grouping(){
+	// begin to update all robot's neighbours and group again
+	ResetSwarmBitset();
+	group_actual_size_ = 0;
+	// if there exists a robot not in any group
+	while(HasRobotUngrouped()){
+		AutoConstructGroup(robots_vector_[GetUngroupedRobot()]);
+		// as a robot unconnected to anyone in the previous groups
+		// it surely can't be merged and the group size shall increase 1
+		group_actual_size_++;
+		UpdateConnectedGroups();
+	}
+	// remove redundant stakes in group_vector_
+	ShrinkGroups();
+	// PrintGroupsMembers();
+	// calculate each group's center and the center of robots with max fitness
+	CalculateCenter();
 }
 
 int Swarm::GetUngroupedRobot(){
@@ -87,7 +131,6 @@ void Swarm::ShrinkGroups(){
 		}
 	}
 }
-
 
 void Swarm::SetRobotGroupIndex(int robot_id, int group_index){
 	robots_vector_[robot_id-1]->set_group_index(group_index);
@@ -123,24 +166,6 @@ void Swarm::AutoConstructGroup(Robot* robot){
 	}	
 }
 
-void Swarm::Grouping(){
-	// begin to update all robot's neighbours and group again
-	ResetSwarmBitset();
-	group_actual_size_ = 0;
-	// if there exists a robot not in any group
-	while(HasRobotUngrouped()){
-		AutoConstructGroup(robots_vector_[GetUngroupedRobot()]);
-		// as a robot unconnected to anyone in the previous groups
-		// it surely can't be merged and the group size shall increase 1
-		group_actual_size_++;
-		UpdateConnectedGroups();
-	}
-	// remove redundant stakes in group_vector_
-	ShrinkGroups();
-	// PrintGroupsMembers();
-	// calculate each group's center and the center of robots with max fitness
-	CalculateCenter();
-}
 
 void Swarm::UpdateConnectedGroups(){
 	int group_index = group_actual_size_ - 1;
@@ -197,16 +222,20 @@ int main(int argc, char const *argv[])
 {	
 	PlayerClient client("localhost", 6665);
 	Swarm swarm(&client);
-	outfile.open("robots.log");
-  	while(true){
+	logfile.open("robots.log", ofstream::out);
+	csvfile.open("data.csv", ofstream::out | ofstream::app);
+  	do{
+  		iteration++;
   		client.Read();
   		swarm.DetectSignals();
 		swarm.Grouping();
 		swarm.UpdateVelocities();
 		swarm.CollectTargets();
   		usleep(UPDATE_INTERVAL);
-  		// sleep(1);
-  	}
+  	} while (!swarm.Complete());
 
+  	logfile << "Program ends at the iteration " << iteration << endl;
+  	logfile.close();
+  	csvfile.close();
 	return 0;
 }

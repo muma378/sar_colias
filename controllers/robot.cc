@@ -7,6 +7,10 @@
 
 #include "robot.h"
 
+/*
+ * Robot Class
+ * Modelling the robot, implements the basic function
+*/
 
 // initialize devices
 Robot::Robot(PlayerClient* client, int index)
@@ -43,13 +47,74 @@ int Robot::get_fitness(){
 	return fitness_;
 }
 
+int Robot::GetIRRangerCount(){
+	return infrared_.GetRangeCount();
+}
+
+double Robot::GetIRRangerIntensity(int ranger_index){
+	if (infrared_.GetIntensity(ranger_index)==0){	//no obstacles detected
+		return 0;
+	}else{
+		double range_reading = infrared_.GetRange(ranger_index) + IR_INTENSITY_OFFSET;
+		return IR_INTENSITY_FACTOR/(range_reading*range_reading);
+	}
+	// return IR_RANGE - infrared_.GetRange(ranger_index);
+}
+
+bool Robot::InBumperRange(){
+	for (int i = 0; i < bumper_.GetIntensityCount(); ++i){
+		if (bumper_.GetIntensity(i)){
+			return true;
+		}
+	}
+	return false;
+}
+
+int Robot::GetNeighboursCount(){
+	return robot_detector_.GetCount();
+}
+
+int Robot::GetNeighbourId(int neighbours_index){
+	return robot_detector_.GetFiducialItem(neighbours_index).id;
+}
+
+Pose* Robot::GetNeighbourPose(int neighbours_index){
+	// TestPoseClass(neighbours_index);
+	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).pose);
+}
+
+Pose* Robot::GetNeighbourPose(Robot& robot){
+	for (int i = 0; i < GetNeighboursCount(); ++i){
+		if (GetNeighbourId(i)==robot.id_){
+			return GetNeighbourPose(i);
+		}
+	}
+	throw out_of_range("Not in the list of neighbours");
+}
+
+Pose* Robot::GetNeighbourPoseError(int neighbours_index){
+	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).upose);
+}
+
+Pose* Robot::GetSourcePose(int source_index){
+	return new Pose(source_detector_.GetFiducialItem(source_index).pose);
+}
+
+int Robot::GetSourceId(int source_index){
+	return (source_detector_.GetFiducialItem(source_index).id)%TARGET_ID_BASE;
+}
+
+player_fiducial_item_t Robot::GetNeighbour(int neighbours_index){
+	return robot_detector_.GetFiducialItem(neighbours_index);
+}
+
 // the velocity is relative to the standard coordinate system
 void Robot::SetAbsoluteVelocity(const Vector2d& absolute_velocity){
 	last_velocity_ = absolute_velocity;
 	// translate standard to local
 	Pose local_pose = GetCurrentPose();
 	// if(id_==1)
-		outfile << "local pose is :" << local_pose << endl;
+		logfile << "local pose is :" << local_pose << endl;
 	Pose standard_pose(absolute_velocity);
 	local_pose = standard_pose.TranslateToCoordinate(local_pose);
 	SetVelocity(local_pose);
@@ -65,16 +130,16 @@ void Robot::SetRelativeVelocity(const Vector2d& relative_velocity){
 }
 
 // low-level method, shouldn't be called by other methods
-// the parameter velocity is relative to local current coordinate system
+// the parameter velocity is relative to lcal current coordinate system
 void Robot::SetVelocity(const Vector2d& velocity){
 	double forward_speed = 0;
 	double turn_speed = 0;
 	if (!velocity.IsAtOrigin()){
 		double radians = velocity.Radian();
 		// if (id_==1){
-			outfile << "Robot " << id_ << " rotate radians : " << radians << endl;
-			outfile << "relative_velocity is " << velocity << endl;
-			outfile << "absolute_velocity is " << last_velocity_ << endl;
+			logfile << "Robot " << id_ << " rotate radians : " << radians << endl;
+			logfile << "relative_velocity is " << velocity << endl;
+			logfile << "absolute_velocity is " << last_velocity_ << endl;
 		// }
 		if (abs(radians)<=SMALL_RADIAN_ERROR) {
 			// forward_speed = velocity.Magnitude()/COMMUNICATE_RANGE*MAX_SPEED*ACCELATOR;
@@ -92,14 +157,47 @@ void Robot::SetVelocity(const Vector2d& velocity){
 		}
 	}
 	// if (id_==1)
-		outfile << "turn speed : " << turn_speed << endl;
+		logfile << "turn speed : " << turn_speed << endl;
 	SetSpeed(forward_speed, turn_speed);
 }
 
-// TODO: fitness shall be effected by many other factors
+// intensity increases as the distance decreases
+// if several sources exist at the same time, choose the highest one
+int Robot::GetSourceIntensity(){
+	Pose* pose;
+	int fitness = 0;
+	for (int i = 0; i < source_detector_.GetCount(); ++i){
+		pose = GetSourcePose(i);
+		if (fitness<GenerateFitness(pose)){
+			fitness = GenerateFitness(pose);
+			found_target_id_ = GetSourceId(i);
+		}
+		delete pose;
+	}
+	return fitness;
+}
+
+int Robot::GenerateFitness(Pose* pose){
+	return (1-pose->Magnitude()/DETECT_SOURCE_RANGE)*F_MAX;
+}
+
 void Robot::UpdateFitness(){
 	int fitness = GetSourceIntensity();
+	// if (fitness==0 && !targets_vector_[found_target_id_].collected_){
+	// 	fitness_ = Gating(fitness);
+	// } else {
+	// 	fitness_ = fitness;
+	// }
 	fitness_ = fitness==0?Gating(fitness):fitness;
+}
+
+int Robot::SeekTarget(){
+	UpdateFitness();
+	if (fitness_>RESCUE_FITNESS){
+		return found_target_id_;
+	} else {
+		return 0;
+	}
 }
 
 // if the value much less or bigger than previous ones
@@ -127,11 +225,11 @@ void Robot::Run(){
 		else 
 			vec += RandomUnitVelocity();
 		// if (id_==1)
-			outfile << "strategy 4 move to" << vec << endl;
+			logfile << "strategy 4 move to" << vec << endl;
 		SetAbsoluteVelocity(vec);
 	} else {
 		// if (id_==1)
-			outfile << "strategy 3 move to" << last_velocity_ << endl;
+			logfile << "strategy 3 move to" << last_velocity_ << endl;
 		// no one higher than it, keeps the previous velocity
 		SetAbsoluteVelocity(last_velocity_);
 	}
@@ -204,79 +302,7 @@ Vector2d Robot::GetObstacleBearing(){
 	return obstacle_bearing;
 }
 
-int Robot::GetIRRangerCount(){
-	return infrared_.GetRangeCount();
-}
 
-double Robot::GetIRRangerIntensity(int ranger_index){
-	if (infrared_.GetIntensity(ranger_index)==0){	//no obstacles detected
-		return 0;
-	}else{
-		double range_reading = infrared_.GetRange(ranger_index) + IR_INTENSITY_OFFSET;
-		return IR_INTENSITY_FACTOR/(range_reading*range_reading);
-	}
-	// return IR_RANGE - infrared_.GetRange(ranger_index);
-}
-
-bool Robot::InBumperRange(){
-	for (int i = 0; i < bumper_.GetIntensityCount(); ++i){
-		if (bumper_.GetIntensity(i)){
-			return true;
-		}
-	}
-	return false;
-}
-
-int Robot::GetNeighboursCount(){
-	return robot_detector_.GetCount();
-}
-
-int Robot::GetNeighbourId(int neighbours_index){
-	return robot_detector_.GetFiducialItem(neighbours_index).id;
-}
-
-Pose* Robot::GetNeighbourPose(int neighbours_index){
-	// TestPoseClass(neighbours_index);
-	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).pose);
-}
-
-Pose* Robot::GetNeighbourPose(Robot& robot){
-	for (int i = 0; i < GetNeighboursCount(); ++i){
-		if (GetNeighbourId(i)==robot.id_){
-			return GetNeighbourPose(i);
-		}
-	}
-	throw out_of_range("Not in the list of neighbours");
-}
-
-Pose* Robot::GetNeighbourPoseError(int neighbours_index){
-	return new Pose(robot_detector_.GetFiducialItem(neighbours_index).upose);
-}
-
-Pose* Robot::GetSourcePose(int source_index){
-	return new Pose(source_detector_.GetFiducialItem(source_index).pose);
-}
-
-player_fiducial_item_t Robot::GetNeighbour(int neighbours_index){
-	return robot_detector_.GetFiducialItem(neighbours_index);
-}
-
-// intensity increases as the distance decreases
-// if several sources exist at the same time, choose the highest one
-int Robot::GetSourceIntensity(){
-	Pose* pose;
-	int fitness = 0;
-	for (int i = 0; i < source_detector_.GetCount(); ++i){
-		pose = GetSourcePose(i);
-		fitness=fitness<GenerateFitness(pose)?GenerateFitness(pose):fitness;
-		delete pose;
-	}
-	return fitness;
-}
-
-int Robot::GenerateFitness(Pose* pose){
-	return (1-pose->Magnitude()/DETECT_SOURCE_RANGE)*F_MAX;
-}
 
 // bool Robot::GotStuckIn(){
 // 	if (history_memory_.ScaleSameRecords()==StationaryScaler::STUCK){
@@ -300,7 +326,7 @@ void Robot::SaveCurrentPlace(){
 	history_memory_.Save( new Place(x, y, fitness_) );
 	// if (id_==1){
 		Place* place = new Place(x, y, fitness_);
-		outfile << "Robot " << id_ << "'s current place is " << *place << endl;
+		logfile << "Robot " << id_ << "'s current place is " << *place << endl;
 	// }
 }
 
@@ -325,6 +351,13 @@ void Robot::TestPoseClass(int neighbours_index){
 	cout << "pose divide: " << (*pose1)/2 << endl;
 
 }
+
+
+/*
+ * Group Class
+ * Group is a subset of robots that in the fiducial robot's communication range
+ * Robots share one group if having the same members.
+*/
 
 Group::Group(Robot* robot)
 	: fiducial_robot_(robot),
@@ -399,18 +432,18 @@ Pose Group::WeightGroupVelocity(Robot& robot){
 	Pose velocity;
 	if (identical_fitness_ && group_size_>=2){
 		// if (robot.id_==1)
-			outfile << "strategy 1 ";
+			logfile << "strategy 1 ";
 		velocity = VelocityDepartCenter(robot);
 	}else{
 		if (group_size_>GROUP_SIZE){
 			// if (robot.id_==1)
-				outfile << "strategy 1+2 ";
+				logfile << "strategy 1+2 ";
 			velocity = VelocityDepartCenter(robot)*DEPART_WEIGHT;
 			velocity += VelocityAsFitnessGradient(robot)*CONVERGE_WEIGHT;
 		}
 		if (group_size_<=GROUP_SIZE && group_size_>=2){
 			// if (robot.id_==1)
-				outfile << "strategy 2 ";
+				logfile << "strategy 2 ";
 			velocity = VelocityAsFitnessGradient(robot);
 		}
 	}
@@ -425,8 +458,8 @@ inline Pose Group::VelocityDepartCenter(Robot& robot){
 }
 
 inline Pose Group::VelocityAsFitnessGradient(Robot& robot){
-	outfile << "center :" << GetCenter(robot);
-	outfile << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
+	logfile << "center :" << GetCenter(robot);
+	logfile << "center_with_max_fitness :" << GetCenterWithMaxFitness(robot);
 	return GetCenterWithMaxFitness(robot) - GetCenter(robot);
 }
 
@@ -476,3 +509,61 @@ void Group::TestTranslateCoordinate(){
 	cout << "test tanslated coordinate: " << current_pose.TranslateToCoordinate(relative_pose) << endl;
 
 }
+
+/*
+ *	Target Class
+ *  Contains the information about a target
+*/
+
+Target::Target()
+	: collected_(false),
+	  iterations_in_rescue_(0){
+	target_size_++;
+	string target_name = TARGET_CODE + to_string(target_size_);
+	name_ = new char[target_name.length() + 1];
+	// name_ = target_name.c_str();
+	strcpy(name_, target_name.c_str());
+	simulation_->GetPose2d(name_, pose_.x_, pose_.y_, pose_.yaw_); 
+}
+
+Target::~Target(){
+	delete [] name_;
+}
+
+// call it at the iteration begin to reset parameters
+void Target::Setup(){
+	detected_ = false;
+	robots_around_ = 0;
+}
+
+// call it before the iteration end to reset parameters
+void Target::Teardown(){
+	if (!collected_){
+		// logfile << "Target " << name_ << " is surrounded by " << robots_around_ << "robots";
+		// logfile << " and has been found for " << iterations_in_rescue_ << " iterations." << endl;
+		
+		if (iterations_in_rescue_>RESCUE_TIME){
+			Collected();
+		}
+		if (!detected_){	// no one found the target in this iteration
+			iterations_in_rescue_ = 0;	// reset the counter
+		}
+	}
+}
+
+void Target::Detected(){
+	if (!detected_){
+		detected_ = true;
+		iterations_in_rescue_++;
+	}
+	robots_around_++;
+}
+
+void Target::Collected(){
+	simulation_->SetPose2d(name_, -100, -100, 0);
+	collected_ = true;
+	target_size_--;
+	logfile << "Target " << name_ << " was collected at iteration " << iteration << endl;
+}
+
+

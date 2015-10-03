@@ -10,8 +10,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include <iostream>
 #include <math.h>
+#include <iostream>
+#include <string>
 #include <fstream>
 #include <libplayerc++/playerc++.h>
 
@@ -35,17 +36,30 @@ using namespace PlayerCc;
 #define IR_INTENSITY_FACTOR 0.0012 // to control the scale of intensity
 #define IR_INTENSITY_OFFSET 0.03	// prevent the intensity becoming infinity
 #define DEFAULT_MEMORY_SIZE 15
-// (MAX_SPEED*UPDATE_INTERVAL/1000)*(DETECT_SOURCE_RANGE/F_MAX)
-#define GATING_FITNESS 3	// to filter values with big error
+// GATING_FITNESS > (MAX_SPEED*UPDATE_INTERVAL/1000)*(F_MAX/DETECT_SOURCE_RANGE)
+#define GATING_FITNESS 	15 // to filter values with big error
 #define MIN_STATIONARY_TIME (2000/UPDATE_INTERVAL)	// 2 seconds
 #define MAX_STATIONARY_TIME 30
 #define DISTANCE_ERROR 0.001  // seen as stationary if the distance robots move less than it
-#define DISTANCE(x, y) (sqrt(x*x+y*y)) 
 
 #define GROUP_SIZE 3
 #define DEPART_WEIGHT 1
 #define CONVERGE_WEIGHT 2
 
-extern ofstream outfile;
+#define TARGETS_COUNT 7
+// targets are able to be collected after PREPARE_TIME since program running 
+#define PREPARE_TIME (15*1000/UPDATE_INTERVAL)	// 15s	
+// the collection of a target takes RESCUE_TIME
+#define RESCUE_TIME (3*1000/UPDATE_INTERVAL)	// 3s 
+// targets would be seen as found only if the fitness of any robots within
+// the target's range is larger than RESCUE_RANGE
+// #define RESCUE_RANGE 0.5	//	m
+#define RESCUE_FITNESS 50	//	F_MAX/2
+#define TARGET_ID_BASE 100  	// the id of targets counted from 101
+
+extern ofstream logfile;
+extern ofstream csvfile;
+extern int iteration;
+extern const string TARGET_CODE;
 
 #endif

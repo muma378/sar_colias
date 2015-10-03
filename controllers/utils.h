@@ -61,6 +61,7 @@ public:
 	int get_fitness(){ return fitness_; }
 	using Vector2d::Magnitude;
 	using Vector2d::Radian;
+	using Vector2d::IsAtOrigin;
 
 private:
 	int fitness_;
@@ -121,6 +122,7 @@ public:
 	int EstimateFitness();
 	Place* GetPlaceWithMaxFitness();
 	int GetMaxFitness();
+	void Flush();
 	void CountStationaryTime(const Place* new_place);
 	StationaryScaler ScaleSameRecords();
 
