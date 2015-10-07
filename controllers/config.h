@@ -19,7 +19,7 @@
 using namespace std;
 using namespace PlayerCc;
 
-#define ROBOTS_COUNT 20 	// the amount of robots
+#define ROBOTS_COUNT 10 	// the amount of robots
 #define F_MAX 100	// max value of fitness
 #define F_MIN 0
 #define UPDATE_INTERVAL 300  // millisecond
@@ -46,7 +46,7 @@ using namespace PlayerCc;
 #define DEPART_WEIGHT 1
 #define CONVERGE_WEIGHT 2
 
-#define TARGETS_COUNT 7
+#define TARGETS_COUNT 5
 // targets are able to be collected after PREPARE_TIME since program running 
 #define PREPARE_TIME (15*1000/UPDATE_INTERVAL)	// 15s	
 // the collection of a target takes RESCUE_TIME

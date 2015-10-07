@@ -9,23 +9,25 @@
 ofstream logfile;
 ofstream csvfile;
 int iteration = 0;
-const string TARGET_CODE = "survivor";
 
-SimulationProxy* Target::simulation_;
-int Target::target_size_;
 
-Swarm::Swarm(PlayerClient* client) : group_actual_size_(0){
+Swarm::Swarm(PlayerClient* client) 
+	: group_actual_size_(0), 
+	  targets_manager_(client){
     srand(time(NULL));
     for (int i = 0; i < ROBOTS_COUNT; ++i)
     	robots_vector_.push_back(new Robot(client, i));
-    
-    Target::simulation_ = new SimulationProxy(client, 0);
-    Target::target_size_ = 0;
-    for (int i = 0; i < TARGETS_COUNT; ++i)
-    	targets_vector_.push_back(new Target());
 }
 
-Swarm::~Swarm(){}
+Swarm::~Swarm(){
+	// delete targets_manager_;
+	for (int i = 0; i < ROBOTS_COUNT; ++i){
+		delete robots_vector_[i];
+	}
+	for (int i = 0; i < group_actual_size_; ++i){
+		delete groups_vector_[i];
+	}
+}
 
 void Swarm::Test(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
@@ -46,15 +48,10 @@ void Swarm::PrintGroupsMembers(){
 }
 
 void Swarm::DetectSignals(){
-	for (int i = 0; i < TARGETS_COUNT; ++i){
-		targets_vector_[i]->Setup();
-	}
+	targets_manager_.Prepare();
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		 it != robots_vector_.end(); ++it){
-		int target_found_ = (*it)->SeekTarget();
-		if (target_found_){		// not 0
-			targets_vector_[target_found_]->Detected();	// update parameters
-		}
+		(*it)->UpdateFitness(targets_manager_);
 	}
 	return;
 }
@@ -81,15 +78,13 @@ void Swarm::UpdateVelocities(){
 }
 
 void Swarm::CollectTargets(){
-	for (int i = 0; i < TARGETS_COUNT; ++i){
-		targets_vector_[i]->Teardown();
-	}
+	targets_manager_.Refresh();
 	return; 
 }
 
 
 bool Swarm::Complete(){
-	return Target::target_size_==0;
+	return targets_manager_.FoundAll();
 }
 
 void Swarm::Grouping(){
@@ -222,7 +217,7 @@ int main(int argc, char const *argv[])
 {	
 	PlayerClient client("localhost", 6665);
 	Swarm swarm(&client);
-	logfile.open("robots.log", ofstream::out);
+	logfile.open("robots.log");
 	csvfile.open("data.csv", ofstream::out | ofstream::app);
   	do{
   		iteration++;

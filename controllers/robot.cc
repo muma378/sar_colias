@@ -26,10 +26,7 @@ Robot::Robot(PlayerClient* client, int index)
 	status = Status::ROTATE;
 }
 
-void Robot::PrintInterfaces(){
-	cout << "id: " << id_ << "fitness: " << get_fitness() << endl;
-	cout << engine_ << infrared_ << robot_detector_ << endl;
-}
+Robot::~Robot(){}
 
 void Robot::SetSpeed(double x, double y, double angle){
 	engine_.SetSpeed(x, angle);
@@ -101,7 +98,11 @@ Pose* Robot::GetSourcePose(int source_index){
 }
 
 int Robot::GetSourceId(int source_index){
-	return (source_detector_.GetFiducialItem(source_index).id)%TARGET_ID_BASE;
+	return (source_detector_.GetFiducialItem(source_index).id);
+}
+
+int Robot::GetSourceIndex(int source_index){
+	return GetSourceId(source_index)%TARGET_ID_BASE-1;
 }
 
 player_fiducial_item_t Robot::GetNeighbour(int neighbours_index){
@@ -161,43 +162,27 @@ void Robot::SetVelocity(const Vector2d& velocity){
 	SetSpeed(forward_speed, turn_speed);
 }
 
+int Robot::GenerateFitness(Pose* pose){
+	return (1-pose->Magnitude()/DETECT_SOURCE_RANGE)*F_MAX;
+}
+
 // intensity increases as the distance decreases
 // if several sources exist at the same time, choose the highest one
-int Robot::GetSourceIntensity(){
+int Robot::GetSourceIntensity(TargetsManager& targets_manager){
 	Pose* pose;
 	int fitness = 0;
 	for (int i = 0; i < source_detector_.GetCount(); ++i){
 		pose = GetSourcePose(i);
 		if (fitness<GenerateFitness(pose)){
 			fitness = GenerateFitness(pose);
-			found_target_id_ = GetSourceId(i);
+			target_nearby_ = targets_manager[GetSourceIndex(i)];
+			if (fitness>RESCUE_FITNESS){
+				target_nearby_->Detected();
+			}
 		}
 		delete pose;
 	}
 	return fitness;
-}
-
-int Robot::GenerateFitness(Pose* pose){
-	return (1-pose->Magnitude()/DETECT_SOURCE_RANGE)*F_MAX;
-}
-
-void Robot::UpdateFitness(){
-	int fitness = GetSourceIntensity();
-	// if (fitness==0 && !targets_vector_[found_target_id_].collected_){
-	// 	fitness_ = Gating(fitness);
-	// } else {
-	// 	fitness_ = fitness;
-	// }
-	fitness_ = fitness==0?Gating(fitness):fitness;
-}
-
-int Robot::SeekTarget(){
-	UpdateFitness();
-	if (fitness_>RESCUE_FITNESS){
-		return found_target_id_;
-	} else {
-		return 0;
-	}
 }
 
 // if the value much less or bigger than previous ones
@@ -212,6 +197,23 @@ int Robot::Gating(int actual){
 		return actual;
 	}
 }
+
+void Robot::UpdateFitness(TargetsManager& targets_manager){
+	int fitness = GetSourceIntensity(targets_manager);
+
+	// if the target is collected in last iteration
+	if (target_nearby_ && target_nearby_->IsCollected()){
+		target_nearby_ = 0;		// reset the pointer
+		history_memory_.Flush();	// clear the memory
+	}
+	//fitness may drop to 0 since the bug caused by Stage
+	if (fitness==0 && target_nearby_ ){	
+		fitness_ = Gating(fitness);	
+	} else {			
+		fitness_ = fitness;
+	}
+}
+
 
 // only one robot in the group
 void Robot::Run(){
@@ -508,62 +510,6 @@ void Group::TestTranslateCoordinate(){
 	Pose relative_pose(0, 2, PI/4);
 	cout << "test tanslated coordinate: " << current_pose.TranslateToCoordinate(relative_pose) << endl;
 
-}
-
-/*
- *	Target Class
- *  Contains the information about a target
-*/
-
-Target::Target()
-	: collected_(false),
-	  iterations_in_rescue_(0){
-	target_size_++;
-	string target_name = TARGET_CODE + to_string(target_size_);
-	name_ = new char[target_name.length() + 1];
-	// name_ = target_name.c_str();
-	strcpy(name_, target_name.c_str());
-	simulation_->GetPose2d(name_, pose_.x_, pose_.y_, pose_.yaw_); 
-}
-
-Target::~Target(){
-	delete [] name_;
-}
-
-// call it at the iteration begin to reset parameters
-void Target::Setup(){
-	detected_ = false;
-	robots_around_ = 0;
-}
-
-// call it before the iteration end to reset parameters
-void Target::Teardown(){
-	if (!collected_){
-		// logfile << "Target " << name_ << " is surrounded by " << robots_around_ << "robots";
-		// logfile << " and has been found for " << iterations_in_rescue_ << " iterations." << endl;
-		
-		if (iterations_in_rescue_>RESCUE_TIME){
-			Collected();
-		}
-		if (!detected_){	// no one found the target in this iteration
-			iterations_in_rescue_ = 0;	// reset the counter
-		}
-	}
-}
-
-void Target::Detected(){
-	if (!detected_){
-		detected_ = true;
-		iterations_in_rescue_++;
-	}
-	robots_around_++;
-}
-
-void Target::Collected(){
-	simulation_->SetPose2d(name_, -100, -100, 0);
-	collected_ = true;
-	target_size_--;
-	logfile << "Target " << name_ << " was collected at iteration " << iteration << endl;
 }
 
 

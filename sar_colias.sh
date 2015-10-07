@@ -21,8 +21,8 @@ fi
 ROBOTS_COUNT=$1
 SURVIVORS_COUNT=$2
 
-X_SIZE=8	# default size of map
-Y_SIZE=8
+X_SIZE=7.9	# default size of map
+Y_SIZE=7.9
 
 if [ ! -z "$3" ]; then
 	X_SIZE=${2%*\*}
@@ -31,7 +31,7 @@ fi
 
 # TODO: detects bc installed
 function random_pose_generator {
-	random_float=$(( $RANDOM%1000 ))
+	random_float=$(( $RANDOM%1000 ))	# keeps the precision 3
 	x_pose=`echo -e "scale=2\n $random_float/1000.0*${X_SIZE}-${X_SIZE}/2"| bc -l`
 	random_float=$(( $RANDOM%1000 ))
 	y_pose=`echo -e "scale=2\n $random_float/1000.0*${Y_SIZE}-${Y_SIZE}/2"| bc -l`
@@ -48,7 +48,7 @@ define sim_colias colias
   # colias_bumpers() ranger 0
   # colias_irs() ranger 1
   robot_detector()  # fiducialfinder 0
-  source_detector() # fiducialfinder 1
+  target_detector() # fiducialfinder 1
 )
 
 '
@@ -120,6 +120,8 @@ player sar.cfg &
 cd controllers
 # replace the parameter in header config.h
 PATTERN="s/^\(#define ROBOTS_COUNT\) \([0-9]*\)/\1 $ROBOTS_COUNT/g"
+sed -i.bak "$PATTERN" 'config.h'
+PATTERN="s/^\(#define TARGETS_COUNT\) \([0-9]*\)/\1 $SURVIVORS_COUNT/g"
 sed -i.bak "$PATTERN" 'config.h'
 make clean
 make

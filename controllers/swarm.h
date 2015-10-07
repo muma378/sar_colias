@@ -9,6 +9,8 @@
 
 #include "config.h"
 #include "robot.h"
+#include "targets.h"
+
 
 
 class Swarm
@@ -41,12 +43,11 @@ public:
 	void PrintGroupsMembers();
 
 private:
+	TargetsManager targets_manager_;
 	vector<Robot*> robots_vector_;	// to record all robots
 	vector<Group*> groups_vector_;	// to record all groups
-	vector<Target*> targets_vector_;
 	// 0 stands for idle, 1 represents being grouped
-	bitset<ROBOTS_COUNT> swarm_bitset_;	
-	// SimulationProxy simulation_;
+	bitset<ROBOTS_COUNT> swarm_bitset_;
 	unsigned group_actual_size_;
 };
 

@@ -30,7 +30,7 @@ define robot_detector fiducial
 
 # To identify the strength of the signal which called fitness.
 # We adopt Fmax - (the distance to the fiducial point) as the value.
-define source_detector fiducial
+define target_detector fiducial
 (
   # 
   range_min 0.0

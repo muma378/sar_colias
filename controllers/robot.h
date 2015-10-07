@@ -9,6 +9,7 @@
 
 #include <bitset>
 #include "config.h"
+#include "targets.h"
 #include "utils.h"
 
 enum Status { ROTATE, MOVING };
@@ -29,9 +30,9 @@ public:
     bool IsMoving(){ return status==Status::MOVING; };
 
     int SeekTarget();
-    void UpdateFitness();
+    void UpdateFitness(TargetsManager& targets_manager);
     int Gating(int actual);
-    int GetSourceIntensity();
+    int GetSourceIntensity(TargetsManager& targets_manager);
     int GenerateFitness(Pose* pose); 
     Vector2d GetObstacleBearing();
 	bool InBumperRange();
@@ -49,24 +50,29 @@ public:
     player_fiducial_item_t GetNeighbour(int neighbours_index);
     Pose* GetSourcePose(int source_index);
     int GetSourceId(int source_index);
+    int GetSourceIndex(int source_index);
 	Place GetCurrentPlace();
 	Pose GetCurrentPose();
 
-    void SetSpeed(double x, double y, double angle);
-    void SetSpeed(double x, double angle);
     void set_fitness(int value);
     int get_fitness();
     void set_group_index(int group_index){ group_index_=group_index; }
     int get_group_index(){ return group_index_; }
 
-    void PrintInterfaces();
+    friend ostream& operator<<(ostream& out, const Robot& r){
+	    out << "id: " << r.id_ << " fitness: " << r.fitness_;
+	    out << "\ngroup index: " << r.group_index_ << " last velocity:" << r.last_velocity_;
+	    out << "\ndrivers: " << r.engine_ << r.infrared_ << r.bumper_; 
+	    out << r.robot_detector_ << r.source_detector_;
+	    return out;
+		}
     void TestPoseClass(int neighbours_index);
 
 
 private:
     int fitness_;
     int group_index_;
-    int found_target_id_;
+    Target* target_nearby_;
     Position2dProxy engine_;
     RangerProxy bumper_;
     RangerProxy infrared_;
@@ -81,6 +87,8 @@ private:
     Status status;
     int moving_counter_ = 0;
     void SetVelocity(const Vector2d& velocity);
+    void SetSpeed(double x, double y, double angle);
+    void SetSpeed(double x, double angle);
 
 };
 
@@ -108,9 +116,6 @@ public:
 	bitset<ROBOTS_COUNT> get_members_bitset(){
 		return members_bitset_;
 	}
-	// hides the process of calculation, returns the pose relative to current one
-	Pose GetCenter(Robot& robot);
-	Pose GetCenterWithMaxFitness(Robot& robot);
 	
 	int get_group_size(){ return group_size_; };
 	int get_fiducial_robot_id(){ return fiducial_robot_id_; }
@@ -125,35 +130,13 @@ private:
 	Pose center_with_max_fitness_;
 	// fiducial point is the place where the first robot at
 	Robot* fiducial_robot_;
-	int fiducial_robot_id_;
 	int group_size_;
+	int fiducial_robot_id_;
 	bool identical_fitness_;
+	// hides the process of calculation, returns the pose relative to current one
+	Pose GetCenter(Robot& robot);
+	Pose GetCenterWithMaxFitness(Robot& robot);
 
-};
-
-
-class Target
-{
-public:
-	Target();
-	~Target();
-
-	static int target_size_;
-	static SimulationProxy* simulation_;
-	bool collected_;
-	bool detected_;
-	int robots_around_;
-
-	void Setup();
-	void Teardown();
-	void Detected();
-	void Collected();
-	int get_iterations(){ return iterations_in_rescue_; }
-
-private:
-	char* name_;
-	Pose pose_;
-	int iterations_in_rescue_;
 };
 
 #endif
