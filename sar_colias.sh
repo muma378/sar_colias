@@ -8,10 +8,11 @@
 if [ -z "$1" ]; then
 	if [[ -e 'sar.cfg' && -e './targets/survivors_cfg.inc' ]]; then
 		player sar.cfg &
-		# cd ./controllers
+		sleep 3
+		cd ./controllers
 		# make clean
 		# make
-		# ./sar_colias
+		./sar_colias
 		exit
 	fi
     echo usage: $0 robots_count survivors_count [x_size*y_size]

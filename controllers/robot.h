@@ -60,10 +60,10 @@ public:
     int get_group_index(){ return group_index_; }
 
     friend ostream& operator<<(ostream& out, const Robot& r){
-	    out << "id: " << r.id_ << " fitness: " << r.fitness_;
+	    out << "Robot id: " << r.id_ << " fitness: " << r.fitness_;
 	    out << "\ngroup index: " << r.group_index_ << " last velocity:" << r.last_velocity_;
-	    out << "\ndrivers: " << r.engine_ << r.infrared_ << r.bumper_; 
-	    out << r.robot_detector_ << r.source_detector_;
+	    // out << "\ndrivers: " << r.engine_ << r.infrared_ << r.bumper_; 
+	    // out << r.robot_detector_ << r.source_detector_;
 	    return out;
 		}
     void TestPoseClass(int neighbours_index);

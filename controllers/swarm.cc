@@ -52,6 +52,7 @@ void Swarm::DetectSignals(){
 	for (vector<Robot*>::iterator it = robots_vector_.begin(); 
 		 it != robots_vector_.end(); ++it){
 		(*it)->UpdateFitness(targets_manager_);
+		logfile << **it << endl;
 	}
 	return;
 }
@@ -232,5 +233,6 @@ int main(int argc, char const *argv[])
   	logfile << "Program ends at the iteration " << iteration << endl;
   	logfile.close();
   	csvfile.close();
+  	exit(0);
 	return 0;
 }

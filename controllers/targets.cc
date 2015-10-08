@@ -53,7 +53,7 @@ void Target::Detected(){
 
 // remove the target from the map
 void Target::Collected(SimulationProxy& simulation){
-	simulation.SetPose2d(name_, -100, -100, 0);
+	simulation.SetPose2d(name_, -10-Target::collected_number, -10, 0);
 	collected_ = true;
 	logfile << "Target " << name_ << " was collected at iteration " << iteration << endl;
 	csvfile << ++Target::collected_number << ", " << iteration << endl;
@@ -92,6 +92,7 @@ void TargetsManager::Prepare(){
 void TargetsManager::Refresh(){
 	for (int i = 0; i < TARGETS_COUNT; ++i){
 		Target* target = targets_[i];
+		logfile << "Target " << i << " :" << *target << endl;
 		if (target->IsAlive() && target->TimeOver()){
 			target->Collected(simulation_);
 			target_size_--;

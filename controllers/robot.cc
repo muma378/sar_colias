@@ -149,10 +149,10 @@ void Robot::SetVelocity(const Vector2d& velocity){
 			status = Status::MOVING;
 		} else {
 			// make sure turns in the max speed but won't be over-tuned
+			// turn_speed = SMALL_RADIAN_ERROR*2*1000/UPDATE_INTERVAL;
 			turn_speed = radians/(UPDATE_INTERVAL-100)*1000;
 			turn_speed = abs(turn_speed)<TURN_SPEED_BOUND?turn_speed\
 						  :turn_speed/abs(turn_speed)*TURN_SPEED_BOUND;
-			// turn_speed = SMALL_RADIAN_ERROR*2*1000/UPDATE_INTERVAL;
 			if (--moving_counter_)
 				status = Status::ROTATE;
 		}
@@ -176,9 +176,6 @@ int Robot::GetSourceIntensity(TargetsManager& targets_manager){
 		if (fitness<GenerateFitness(pose)){
 			fitness = GenerateFitness(pose);
 			target_nearby_ = targets_manager[GetSourceIndex(i)];
-			if (fitness>RESCUE_FITNESS){
-				target_nearby_->Detected();
-			}
 		}
 		delete pose;
 	}
@@ -211,6 +208,9 @@ void Robot::UpdateFitness(TargetsManager& targets_manager){
 		fitness_ = Gating(fitness);	
 	} else {			
 		fitness_ = fitness;
+	}
+	if (fitness_ > RESCUE_FITNESS && target_nearby_ ){
+		target_nearby_->Detected();
 	}
 }
 

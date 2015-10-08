@@ -11,7 +11,6 @@ quit_time 600 # 10 minutes
 paused 1
 
 # the length of real/simulated milliseconds between updates of the simulation window
-# interval_real 100 # default
 interval_sim 100
 resolution 0.005
 threads 4
